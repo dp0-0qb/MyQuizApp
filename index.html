@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Quiz</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f9;
+            --card-bg: #ffffff;
+            --primary: #4a5568;
+            --accent: #667eea;
+            --correct: #48bb78;
+            --wrong: #f56565;
+            --text-main: #2d3748;
+            --text-sub: #718096;
+            --border: #e2e8f0;
+            --star-color: #f6ad55;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0;
+        }
+
+        #app {
+            width: 90%; max-width: 600px; background: var(--card-bg);
+            padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        h1 { text-align: center; color: var(--primary); margin-bottom: 2rem; font-size: 1.5rem; }
+
+        .title-image {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        margin: 0 auto 2rem;
+        }
+
+        .menu-screen { text-align: center; }
+        
+        .settings { 
+            margin: 1.5rem 0; padding: 1.5rem; background: #fafbfc; 
+            border-radius: 12px; border: 1px solid var(--border); 
+        }
+
+        .slider-container { margin: 1.5rem 0; text-align: left; }
+        .slider-label { display: block; font-weight: bold; margin-bottom: 0.8rem; font-size: 1rem; }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%; height: 8px;
+            background: var(--border); border-radius: 6px; outline: none;
+            margin-bottom: 1rem;
+        }
+        input[type="range"]:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px; height: 24px;
+            background: var(--accent); border-radius: 50%; cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        /* モード選択のスタイル */
+        .mode-selection {
+            display: flex; gap: 12px; margin-bottom: 1.5rem; justify-content: center;
+        }
+        .mode-btn {
+            flex: 1; padding: 12px; border: 2px solid var(--border); border-radius: 10px;
+            background: #fff; font-weight: bold; cursor: pointer; transition: all 0.2s;
+            color: var(--text-sub);
+        }
+        .mode-btn.active {
+            border-color: var(--accent); background: #f0f4ff; color: var(--accent);
+        }
+
+        .toggle-group {
+            display: flex; flex-direction: column; gap: 8px; margin-top: 1.5rem;
+            align-items: center;
+        }
+
+        .custom-toggle {
+            display: flex; align-items: center;
+            gap: 12px; 
+            font-size: 1rem; 
+            font-weight: bold;
+            color: var(--primary);
+            padding: 4px 0;
+            cursor: pointer;
+            width: fit-content;
+            min-width: 280px;
+            text-align: left;
+        }
+
+        /* スター集中モード トグル */
+        .star-mode-toggle {
+            display: flex; align-items: center;
+            gap: 12px; 
+            font-size: 1rem; 
+            font-weight: bold;
+            color: var(--star-color);
+            padding: 4px 0;
+            cursor: pointer;
+            width: fit-content;
+            min-width: 280px;
+            text-align: left;
+        }
+
+        .quiz-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-sub); font-weight: bold;
+        }
+
+        .progress-container { height: 6px; background: var(--border); border-radius: 3px; margin-bottom: 1.5rem; overflow: hidden; }
+        .progress-bar { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+        
+        .question-text { 
+            font-size: 1.1rem; font-weight: 600; line-height: 1.6; margin-bottom: 1.5rem; 
+            padding: 1.2rem; background: #ffffff; color: var(--text-main);
+        }
+
+        /* フラッシュカード用タップエリア */
+        .flashcard-hint {
+            text-align: center; color: var(--text-sub); font-size: 0.9rem; margin-top: 2rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        .choices { display: grid; gap: 12px; }
+        .choice-btn {
+            padding: 14px 18px; border: 1px solid var(--border); border-radius: 10px;
+            background: #fff; cursor: pointer; text-align: left; font-size: 1rem;
+            transition: all 0.2s; color: var(--text-main);
+        }
+        .choice-btn:hover:not(:disabled) { background: #f0f4ff; border-color: var(--accent); }
+        .choice-btn.correct { background: var(--correct) !important; border-color: var(--correct); color: white; font-weight: bold; }
+        .choice-btn.wrong { background: var(--wrong) !important; border-color: var(--wrong); color: white; }
+
+        .feedback-area { margin-top: 1.5rem; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .expl-section { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+        .expl-title { font-weight: bold; font-size: 0.9rem; color: var(--text-sub); margin-bottom: 8px; }
+        .other-options-title { font-weight: bold; font-size: 0.85rem; color: var(--text-sub); margin: 1.5rem 0 8px 0; }
+        
+        .expl-box { 
+            font-size: 0.85rem; background: #f8fafc; padding: 12px; border-radius: 8px; 
+            margin-bottom: 8px; border: 1px solid #edf2f7; line-height: 1.6;
+        }
+        
+        .expl-term { 
+            font-weight: bold; 
+            color: var(--accent); 
+            text-decoration: underline; 
+            cursor: pointer;
+        }
+        .expl-term:hover {
+            color: #434190;
+        }
+
+        .detail-text { display: block; margin-top: 5px; color: #2d3748; }
+
+        .next-btn, .start-btn {
+            width: 100%; padding: 16px; border: none; border-radius: 10px;
+            background: var(--accent); color: white; font-weight: bold; cursor: pointer; 
+            margin-top: 1rem; font-size: 1.1rem; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .secondary-btn {
+            width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 10px;
+            background: #fff; color: var(--primary); font-weight: bold; cursor: pointer; 
+            margin-top: 0.5rem; font-size: 1rem; transition: background 0.2s;
+        }
+        .secondary-btn:hover { background: #f8fafc; }
+
+        /* ─── スターボタン ─── */
+        .star-btn {
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            line-height: 1;
+            transition: transform 0.15s;
+            color: var(--star-color);
+        }
+        .star-btn:hover { transform: scale(1.2); }
+        .star-btn:active { transform: scale(0.95); }
+
+        /* クイズヘッダーに星ボタンを並べるラッパー */
+        .quiz-header-with-star {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .quiz-header-left {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.9rem; color: var(--text-sub); font-weight: bold;
+        }
+        .quiz-header-right {
+            font-size: 0.9rem; color: var(--text-sub); font-weight: bold;
+        }
+
+        /* スター集中モード中のバッジ */
+        .star-mode-badge {
+            display: inline-block;
+            background: var(--star-color);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        /* ─── モーダル（管理画面）─── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.2s;
+        }
+        .modal-box {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 520px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .modal-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 1.2rem;
+            text-align: center;
+        }
+        .modal-close-btn {
+            position: absolute;
+            top: 1rem; right: 1rem;
+            background: none; border: none;
+            font-size: 1.4rem; cursor: pointer; color: var(--text-sub);
+        }
+        .modal-close-btn:hover { color: var(--text-main); }
+
+        .star-manage-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .star-manage-row:last-child { border-bottom: none; }
+        .star-manage-filename {
+            font-weight: bold; font-size: 0.95rem; color: var(--text-main);
+            max-width: 65%; word-break: break-all;
+        }
+        .star-manage-count {
+            font-size: 0.85rem; color: var(--text-sub); margin-top: 2px;
+        }
+        .star-manage-del-btn {
+            padding: 6px 14px; border: 1px solid var(--wrong); border-radius: 8px;
+            background: #fff; color: var(--wrong); font-weight: bold; cursor: pointer;
+            font-size: 0.85rem; transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .star-manage-del-btn:hover { background: var(--wrong); color: #fff; }
+
+        .empty-star-msg {
+            color: var(--text-sub); font-size: 0.95rem; padding: 1.5rem 0; text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app"></div>
+<!-- スター管理モーダル（app外に配置） -->
+<div id="star-modal" style="display:none;"></div>
+
+<script>
+// 音声のプリロード
+const sounds = {
+    correct: new Audio('sounds/correct.mp3'),
+    wrong: new Audio('sounds/wrong.mp3')
+};
+
+let currentData = [
+    {"id":"demo01","q":"物理回線の種類を問わずソフトウェアで一元管理し、トラフィックを最適化する技術。","a":"SD-WAN", "detail":"拠点のルーターをクラウド上で一括制御。重要通信を安定した経路へ自動で振り分ける「インターネットブレイクアウト」が代表的な機能です。"},
+    {"id":"demo02","q":"6GHz帯対応・最大46Gbpsの高速通信を実現する無線LAN規格。","a":"Wi-Fi 7", "detail":"最新の通信規格。複数の周波数帯を束ねて通信するMLO技術により、遅延が大幅に削減されました。"},
+    {"id":"demo03","q":"自分の思考プロセスを客観的に観察・評価する高次の認知活動。","a":"メタ思考", "detail":"一歩引いた視点で「自分はどう考えているか」を分析すること。課題の本質を見抜く力や、認知の歪みを正すのに役立ちます。"},
+    {"id":"demo04","q":"既存の設備にセンサーを後付けしてIoT化する手法。","a":"レトロフィットIoT", "detail":"古い機械を買い替えずに、外付けセンサーで稼働データを取得するDX手法。コストを抑えてスマート工場化する際に多用されます。"},
+    {"id":"demo05","q":"問題や失敗を早期に検出させ、学習を加速させる設計思想。","a":"フェイルファースト", "detail":"致命的な失敗になる前に小さな失敗をわざと経験し、そこから得た教訓で成功率を高める考え方です。"}
+];
+
+// 現在読み込まれているファイル名（LocalStorageのキーに使用）
+let currentFileName = 'デモデータ';
+
+// ─── スター管理 ───────────────────────────────────────────
+// LocalStorageのキー: `stars_${ファイル名}`
+// 値: JSON配列 ["id1","id2",...]
+
+function getStarKey(fileName) {
+    return 'stars_' + fileName;
+}
+
+function loadStars(fileName) {
+    try {
+        return JSON.parse(localStorage.getItem(getStarKey(fileName)) || '[]');
+    } catch(e) { return []; }
+}
+
+function saveStars(fileName, starIds) {
+    localStorage.setItem(getStarKey(fileName), JSON.stringify(starIds));
+}
+
+function toggleStar(itemId) {
+    let stars = loadStars(currentFileName);
+    if (stars.includes(itemId)) {
+        stars = stars.filter(id => id !== itemId);
+    } else {
+        stars.push(itemId);
+    }
+    saveStars(currentFileName, stars);
+    // クイズ画面を再描画（selectedAnswerの状態は保持）
+    render();
+}
+
+function isStarred(itemId) {
+    return loadStars(currentFileName).includes(itemId);
+}
+
+// ─── スター管理モーダル ───────────────────────────────────
+
+function openStarModal() {
+    const modal = document.getElementById('star-modal');
+    modal.style.display = 'flex';
+    renderStarModal();
+}
+
+function closeStarModal() {
+    const modal = document.getElementById('star-modal');
+    modal.style.display = 'none';
+}
+
+function renderStarModal() {
+    // LocalStorage内のスターキーを全列挙
+    const starEntries = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('stars_')) {
+            const fileName = key.slice('stars_'.length);
+            try {
+                const ids = JSON.parse(localStorage.getItem(key) || '[]');
+                if (ids.length > 0) {
+                    starEntries.push({ fileName, count: ids.length, key });
+                }
+            } catch(e) {}
+        }
+    }
+
+    const rowsHtml = starEntries.length === 0
+        ? `<div class="empty-star-msg">★ の付いた問題はまだありません。</div>`
+        : starEntries.map(entry => `
+            <div class="star-manage-row">
+                <div>
+                    <div class="star-manage-filename">${escapeHtml(entry.fileName)}</div>
+                    <div class="star-manage-count">★ ${entry.count}件</div>
+                </div>
+                <button class="star-manage-del-btn" onclick="deleteStarData('${escapeHtml(entry.key)}', '${escapeHtml(entry.fileName)}')">削除</button>
+            </div>
+        `).join('');
+
+    document.getElementById('star-modal').innerHTML = `
+        <div class="modal-overlay" onclick="closeStarModal()">
+            <div class="modal-box" onclick="event.stopPropagation()">
+                <button class="modal-close-btn" onclick="closeStarModal()">✕</button>
+                <div class="modal-title">⭐ スター管理</div>
+                ${rowsHtml}
+                <button class="secondary-btn" style="margin-top:1.2rem;" onclick="closeStarModal()">閉じる</button>
+            </div>
+        </div>
+    `;
+}
+
+function deleteStarData(key, fileName) {
+    if (confirm(`「${fileName}」のスターをすべて削除しますか？`)) {
+        localStorage.removeItem(key);
+        renderStarModal();
+        // 現在開いているファイルなら再描画
+        if (fileName === currentFileName) render();
+    }
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// ─── アプリ状態 ──────────────────────────────────────────────
+
+let state = {
+    screen: 'menu',
+    mode: 'quiz',           // 'quiz' (4択) または 'flashcard' (フラッシュカード)
+    score: 0,
+    currentIndex: 0,
+    questionCount: 5,
+    isAllQuestions: false,
+    isSoundEnabled: true,
+    isStarMode: false,      // スター集中モード
+    quizList: [],
+    selectedAnswer: null,
+    isCorrect: false,
+    isSaved: false 
+};
+
+// ─── レンダリング ─────────────────────────────────────────────
+
+function render() {
+    const app = document.getElementById('app');
+    
+    if (state.screen === 'menu') {
+        const stars = loadStars(currentFileName);
+        const starCount = stars.length;
+        const maxTenStep = Math.max(10, Math.floor(currentData.length / 10) * 10);
+        const displayCount = state.isAllQuestions ? currentData.length : Math.min(state.questionCount, currentData.length);
+
+        app.innerHTML = `
+            <div class="menu-screen">
+                <img src="images/TitleImage.png" alt="My Quiz" class="title-image">
+                <div class="settings">
+                    <label class="slider-label" style="text-align:center;">出題モードを選択</label>
+                    <div class="mode-selection">
+                        <button class="mode-btn ${state.mode === 'quiz' ? 'active' : ''}" onclick="changeMode('quiz')">4択モード</button>
+                        <button class="mode-btn ${state.mode === 'flashcard' ? 'active' : ''}" onclick="changeMode('flashcard')">フラッシュカード</button>
+                    </div>
+
+                    <div class="file-input-area">
+                        <label class="file-input-label">JSON形式のファイルを選択してください</label>
+                        <input type="file" id="file-input" accept=".json" onchange="handleFile(event)">
+                        <div id="file-status" style="font-size:0.8rem; color:var(--correct); margin-top:5px;"></div>
+                    </div>
+                    <div class="slider-container">
+                        <label class="slider-label">出題数: <span id="q-count-val">${displayCount}</span>問</label>
+                        <input type="range" id="q-slider" 
+                               min="10" step="10" max="${maxTenStep}" 
+                               value="${state.questionCount}" 
+                               ${state.isAllQuestions || state.isStarMode ? 'disabled' : ''}
+                               oninput="updateCount(this.value)">
+                        
+                        <div class="toggle-group">
+                            <label class="custom-toggle">
+                                <input type="checkbox" ${state.isAllQuestions ? 'checked' : ''} 
+                                       ${state.isStarMode ? 'disabled' : ''}
+                                       onchange="toggleAllQuestions(this.checked)">
+                                <span>全問出題モード (${currentData.length}問すべて)</span>
+                            </label>
+                            <label class="star-mode-toggle">
+                                <input type="checkbox" id="star-mode-chk" 
+                                       ${state.isStarMode ? 'checked' : ''}
+                                       onchange="toggleStarMode(this.checked)">
+                                <span>⭐ スター集中モード${starCount > 0 ? ` (${starCount}件)` : ' (未登録)'}</span>
+                            </label>
+                            <label class="custom-toggle" style="${state.mode === 'flashcard' ? 'opacity:0.4; cursor:not-allowed;' : ''}">
+                                <input type="checkbox" ${state.isSoundEnabled ? 'checked' : ''} 
+                                       ${state.mode === 'flashcard' ? 'disabled' : ''}
+                                       onchange="toggleSound(this.checked)">
+                                <span>効果音を鳴らす</span>
+                            </label>
+
+
+                        </div>
+                    </div>
+                </div>
+                <button class="start-btn" onclick="startQuiz()">出題開始</button>
+                <button class="secondary-btn" onclick="openStarModal()">⭐ スター管理</button>
+                <button class="secondary-btn" onclick="showHistory()">これまでの記録</button>
+            </div>
+        `;
+
+    } else if (state.screen === 'quiz') {
+        const q = state.quizList[state.currentIndex];
+        const actualTotal = state.quizList.length;
+        const progress = (state.currentIndex / actualTotal) * 100;
+        // idがある問題だけ星機能を有効化
+        const qId = q.id || null;
+        const starred = qId ? isStarred(qId) : false;
+        const starLabel = starred ? '★' : '☆';
+
+        if (state.mode === 'quiz') {
+            // ─── 4択モードの画面 ───
+            const correctAnswerObj = q.choices.find(c => c.term === q.a);
+            const wrongAnswersObj = q.choices.filter(c => c.term !== q.a);
+            
+            app.innerHTML = `
+                <div class="quiz-header-with-star">
+                    <div class="quiz-header-left">
+                        <span>${state.currentIndex + 1} / ${actualTotal}</span>
+                        ${state.isStarMode ? '<span class="star-mode-badge">⭐集中</span>' : ''}
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        ${qId ? `<button class="star-btn" onclick="toggleStar('${escapeHtml(qId)}')" title="${starred ? 'スターを外す' : 'スターをつける'}">${starLabel}</button>` : ''}
+                        <span class="quiz-header-right">正解数: ${state.score}</span>
+                    </div>
+                </div>
+                <div class="progress-container"><div class="progress-bar" style="width:${progress}%"></div></div>
+                <div class="question-text">${q.q}</div>
+                <div class="choices">
+                    ${q.choices.map(choice => {
+                        let cls = "";
+                        if (state.selectedAnswer) {
+                            if (choice.term === q.a) cls = "correct";
+                            else if (choice.term === state.selectedAnswer) cls = "wrong";
+                        }
+                        return `<button class="choice-btn ${cls}" onclick="checkAnswer('${escapeHtml(choice.term)}')" ${state.selectedAnswer ? 'disabled' : ''}>${choice.term}</button>`;
+                    }).join('')}
+                </div>
+                <div class="feedback-area" style="display:${state.selectedAnswer ? 'block' : 'none'}">
+                    <div style="font-size:1.2rem; font-weight:bold; margin-bottom:10px; color:${state.isCorrect ? 'var(--correct)' : 'var(--wrong)'}">
+                        ${state.isCorrect ? '✅ 正解です！' : '❌ 不正解...'}
+                    </div>
+                    <div class="expl-section">
+                        <div class="expl-title">正解の解説:</div>
+                        <div class="expl-box">
+                            <a href="https://www.google.com/search?q=${encodeURIComponent(correctAnswerObj.term)}" target="_blank" rel="noopener noreferrer" class="expl-term">${correctAnswerObj.term}</a>: 
+                            <span class="detail-text">${correctAnswerObj.detail || correctAnswerObj.def}</span>
+                        </div>
+
+                        <div class="other-options-title">その他の選択肢:</div>
+                        ${wrongAnswersObj.map(choice => `
+                            <div class="expl-box">
+                                <a href="https://www.google.com/search?q=${encodeURIComponent(choice.term)}" target="_blank" rel="noopener noreferrer" class="expl-term">${choice.term}</a>: ${choice.def}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="next-btn" onclick="nextQuestion()">
+                        ${state.currentIndex + 1 >= actualTotal ? '最終結果を見る' : '次の問題へ'}
+                    </button>
+                </div>
+            `;
+        } else {
+            // ─── フラッシュカードモードの画面 ───
+            app.innerHTML = `
+                <div class="quiz-header-with-star">
+                    <div class="quiz-header-left">
+                        <span>${state.currentIndex + 1} / ${actualTotal}</span>
+                        ${state.isStarMode ? '<span class="star-mode-badge">⭐集中</span>' : ''}
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        ${qId ? `<button class="star-btn" onclick="toggleStar('${escapeHtml(qId)}')" title="${starred ? 'スターを外す' : 'スターをつける'}">${starLabel}</button>` : ''}
+                        <span class="quiz-header-right">フラッシュカード</span>
+                    </div>
+                </div>
+                <div class="progress-container"><div class="progress-bar" style="width:${progress}%"></div></div>
+                
+                <div style="cursor: ${state.selectedAnswer ? 'default' : 'pointer'}" onclick="revealFlashcard()">
+                    <div class="question-text" style="border: 1px dashed var(--accent); min-height: 80px; display: flex; align-items: center; justify-content: center; text-align: center; margin-bottom: 0.5rem;">
+                        ${q.q}
+                    </div>
+                    ${!state.selectedAnswer ? `<div class="flashcard-hint">カードをタップして答えを表示</div>` : ''}
+                </div>
+
+                <div class="feedback-area" style="display:${state.selectedAnswer ? 'block' : 'none'}">
+                    <div class="expl-section">
+                        <div class="expl-title">正解の解説:</div>
+                        <div class="expl-box">
+                            <a href="https://www.google.com/search?q=${encodeURIComponent(q.a)}" target="_blank" rel="noopener noreferrer" class="expl-term">${q.a}</a>: 
+                            <span class="detail-text">${q.detail || '解説はありません。'}</span>
+                        </div>
+                    </div>
+                    <button class="next-btn" onclick="nextQuestion()">
+                        ${state.currentIndex + 1 >= actualTotal ? '終了してメニューへ' : '次の問題へ'}
+                    </button>
+                </div>
+            `;
+        }
+    } else if (state.screen === 'result') {
+        const actualTotal = state.quizList.length;
+        const rate = Math.round((state.score / actualTotal) * 100);
+        app.innerHTML = `
+            <div class="menu-screen" style="text-align: center;"> <h1>結果発表</h1>
+                
+                <img src="images/Finish.png" alt="Finish" class="title-image" style="width: 250px;>
+                
+                <div style="font-size:3.5rem; font-weight:bold; color:var(--accent); margin: 1rem 0; text-align: center;">${state.score} / ${actualTotal}</div>
+                <p style="font-size:1.2rem; margin-bottom:2rem; text-align: center;">正解率: ${rate}%</p>
+                
+                <button class="start-btn" onclick="saveRecord()" ${state.isSaved ? 'disabled style="background:var(--text-sub); box-shadow:none; cursor:not-allowed;"' : ''}>
+                    ${state.isSaved ? '✓ 記録を保存しました' : '今日の記録を保存する'}
+                </button>
+                
+                <button class="secondary-btn" onclick="state.screen='menu'; render();" style="margin-top: 0.5rem;">メニューに戻る</button>
+            </div>
+        `;
+    } else if (state.screen === 'history') {
+        const history = JSON.parse(localStorage.getItem('quiz_history') || '[]');
+        app.innerHTML = `
+            <div class="menu-screen">
+                <h1>これまでの記録</h1>
+                <div style="max-height: 280px; overflow-y: auto; margin-bottom: 1.5rem; border: 1px solid var(--border); border-radius: 8px; background: #fafbfc; padding: 10px;">
+                    ${history.length === 0 ? '<p style="color:var(--text-sub); padding: 20px 0;">記録がありません</p>' : `
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid var(--border); color: var(--text-sub);">
+                                    <th style="padding: 6px;">日時</th>
+                                    <th style="padding: 6px; text-align: center;">出題数</th>
+                                    <th style="padding: 6px; text-align: right;">正答率</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${history.map(h => `
+                                    <tr style="border-bottom: 1px solid var(--border);">
+                                        <td style="padding: 6px; color:var(--text-sub);">${h.date}</td>
+                                        <td style="padding: 6px; text-align: center;">${h.total}問</td>
+                                        <td style="padding: 6px; text-align: right; font-weight: bold; color: var(--accent);">${h.rate}%</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `}
+                </div>
+                ${history.length > 0 ? `<button class="choice-btn" onclick="clearHistory()" style="width:100%; text-align:center; margin-bottom:1rem; color:var(--wrong); border-color:var(--wrong); padding: 10px;">記録をすべて消去</button>` : ''}
+                <button class="start-btn" onclick="state.screen='menu'; render();">メニューに戻る</button>
+            </div>
+        `;
+    }
+}
+
+// ─── 各種ハンドラ ─────────────────────────────────────────────
+
+function changeMode(mode) {
+    state.mode = mode;
+    render();
+}
+
+function updateCount(val) {
+    state.questionCount = parseInt(val);
+    document.getElementById('q-count-val').innerText = val;
+}
+
+function toggleAllQuestions(checked) {
+    state.isAllQuestions = checked;
+    render();
+}
+
+function toggleSound(checked) {
+    state.isSoundEnabled = checked;
+}
+
+function toggleStarMode(checked) {
+    if (checked) {
+        const stars = loadStars(currentFileName);
+        if (stars.length === 0) {
+            alert('スターがついた問題がありません。\n先に問題に ★ をつけてください。');
+            // チェックを戻す
+            const chk = document.getElementById('star-mode-chk');
+            if (chk) chk.checked = false;
+            return;
+        }
+        state.isStarMode = true;
+        state.isAllQuestions = false;
+    } else {
+        state.isStarMode = false;
+    }
+    render();
+}
+
+function handleFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (Array.isArray(data)) {
+                currentData = data;
+                currentFileName = file.name;
+                state.questionCount = data.length >= 10 ? 10 : data.length;
+                // スター集中モード中ならリセット（別ファイルになるため）
+                state.isStarMode = false;
+                render();
+                document.getElementById('file-status').innerText = `✅ ${data.length}問読み込み完了 (${file.name})`;
+            }
+        } catch (err) { alert("JSONファイルの形式が正しくありません。"); }
+    };
+    reader.readAsText(file);
+}
+
+function startQuiz() {
+    state.score = 0;
+    state.currentIndex = 0;
+    state.screen = 'quiz';
+    state.selectedAnswer = null;
+    state.isSaved = false;
+
+    let pool;
+    if (state.isStarMode) {
+        // スターがついた問題だけに絞る
+        const stars = loadStars(currentFileName);
+        pool = currentData.filter(item => item.id && stars.includes(item.id));
+        if (pool.length === 0) {
+            alert('スターがついた問題がありません。集中モードをOFFにしてください。');
+            state.screen = 'menu';
+            render();
+            return;
+        }
+    } else {
+        let count = state.isAllQuestions ? currentData.length : state.questionCount;
+        count = Math.min(count, currentData.length);
+        pool = [...currentData].sort(() => Math.random() - 0.5).slice(0, count);
+    }
+
+    const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
+
+    state.quizList = shuffledPool.map(item => {
+        const others = currentData
+            .filter(d => d.a !== item.a)
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 3);
+        
+        const choices = [
+            { term: item.a, def: item.q, detail: item.detail || null },
+            ...others.map(o => ({ term: o.a, def: o.q, detail: null }))
+        ].sort(() => Math.random() - 0.5);
+
+        return { id: item.id || null, q: item.q, a: item.a, detail: item.detail, choices: choices };
+    });
+    render();
+}
+
+function checkAnswer(ans) {
+    state.selectedAnswer = ans;
+    state.isCorrect = (ans === state.quizList[state.currentIndex].a);
+    
+    if (state.isSoundEnabled && state.mode === 'quiz') {
+        const sound = state.isCorrect ? sounds.correct : sounds.wrong;
+        sound.currentTime = 0; 
+        sound.play().catch(e => console.log("Audio play failed", e));
+    }
+
+    if (state.isCorrect) {
+        state.score++;
+    }
+    render();
+}
+
+function revealFlashcard() {
+    if (state.selectedAnswer) return; 
+    state.selectedAnswer = true; 
+    render();
+}
+
+function nextQuestion() {
+    state.currentIndex++;
+    if (state.currentIndex >= state.quizList.length) {
+        if (state.mode === 'flashcard') {
+            state.screen = 'menu';
+        } else {
+            state.screen = 'result';
+        }
+    } else {
+        state.selectedAnswer = null;
+    }
+    render();
+}
+
+function saveRecord() {
+    if (state.isSaved) return;
+
+    const actualTotal = state.quizList.length;
+    const rate = Math.round((state.score / actualTotal) * 100);
+    
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const dateStr = `${yyyy}/${mm}/${dd} ${hh}:${min}`;
+
+    const newRecord = {
+        date: dateStr,
+        total: actualTotal,
+        rate: rate
+    };
+
+    const history = JSON.parse(localStorage.getItem('quiz_history') || '[]');
+    history.unshift(newRecord);
+    localStorage.setItem('quiz_history', JSON.stringify(history));
+
+    state.isSaved = true;
+    render();
+}
+
+function showHistory() {
+    state.screen = 'history';
+    render();
+}
+
+function clearHistory() {
+    if (confirm("これまでの学習記録をすべて消去しますか？")) {
+        localStorage.removeItem('quiz_history');
+        render();
+    }
+}
+
+render();
+</script>
+</body>
+</html>
