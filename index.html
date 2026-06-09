@@ -27,8 +27,9 @@
         }
 
         #app {
-            width: 90%; max-width: 600px; background: var(--card-bg);
-            padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        width: 90%; max-width: 600px; background: var(--card-bg);
+        padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        position: relative;
         }
 
         h1 { text-align: center; color: var(--primary); margin-bottom: 2rem; font-size: 1.5rem; }
@@ -276,6 +277,31 @@
         .empty-star-msg {
             color: var(--text-sub); font-size: 0.95rem; padding: 1.5rem 0; text-align: center;
         }
+
+    /* ─── ヘルプボタン & ヘルプ画面 ─── */
+        .help-btn {
+            position: absolute;
+            top: 1.2rem;
+            right: 1.2rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: #fff;
+            color: var(--text-sub);
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .help-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
     </style>
 </head>
 <body>
@@ -437,6 +463,7 @@ function render() {
 
         app.innerHTML = `
             <div class="menu-screen">
+                <button class="help-btn" onclick="state.screen='help'; render();" title="使い方">？</button>
                 <img src="images/TitleImage.png" alt="My Quiz" class="title-image">
                 <div class="settings">
                     <label class="slider-label" style="text-align:center;">出題モードを選択</label>
@@ -463,13 +490,14 @@ function render() {
                                 <input type="checkbox" ${state.isAllQuestions ? 'checked' : ''} 
                                        ${state.isStarMode ? 'disabled' : ''}
                                        onchange="toggleAllQuestions(this.checked)">
-                                <span>全問出題モード (${currentData.length}問すべて)</span>
+                                <span>全問出題モード (${currentData.length}問)</span>
                             </label>
-                            <label class="star-mode-toggle">
+                            <label class="star-mode-toggle" style="${starCount === 0 ? 'opacity:0.4; cursor:not-allowed;' : ''}">
                                 <input type="checkbox" id="star-mode-chk" 
-                                       ${state.isStarMode ? 'checked' : ''}
-                                       onchange="toggleStarMode(this.checked)">
-                                <span>⭐ スター集中モード${starCount > 0 ? ` (${starCount}件)` : ' (未登録)'}</span>
+                                    ${state.isStarMode ? 'checked' : ''}
+                                    ${starCount === 0 ? 'disabled' : ''}
+                                    onchange="toggleStarMode(this.checked)">
+                                <span>⭐ スター集中モード${starCount > 0 ? ` (${starCount}問)` : ' (未登録)'}</span>
                             </label>
                             <label class="custom-toggle" style="${state.mode === 'flashcard' ? 'opacity:0.4; cursor:not-allowed;' : ''}">
                                 <input type="checkbox" ${state.isSoundEnabled ? 'checked' : ''} 
@@ -602,6 +630,39 @@ function render() {
                 <button class="secondary-btn" onclick="state.screen='menu'; render();" style="margin-top: 0.5rem;">メニューに戻る</button>
             </div>
         `;
+
+    } else if (state.screen === 'help') {
+    app.innerHTML = `
+        <div class="menu-screen">
+            <h1>このアプリについて</h1>
+            <div style="text-align:left; line-height:1.8; font-size:0.95rem;">
+                <p><strong>学習用アプリとしてご利用ください</strong></p>
+                <p>作成したJSONファイルからランダムに問題を出題するアプリです。<br>
+                選択肢から解答する4択モードと、単語カードのようにめくって解答するフラッシュカードモードがあります。</p>
+
+                <hr style="border:none; border-top:1px solid var(--border); margin:1.2rem 0;">
+
+                <p><strong>JSONの記述ルール</strong></p>
+                <p>id、q、a、detail が1問分のデータのかたまりです。</p>
+                <pre style="background:#f8fafc; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; border:1px solid var(--border);">[
+  {
+    "id": "12345",
+    "q": "土壌の酸性度によって花色が変わる、梅雨の時期に咲く花は？",
+    "a": "紫陽花",
+    "detail": "土が酸性（pHが低い）だと、土に含まれるアルミニウムが溶け出しやすくなり、紫陽花がこれを吸収します。吸収されたアルミニウムと色素が結合することで、鮮やかな青色に変化します。土がアルカリ性（pHが高い）だと、アルミニウムが溶け出さず根から吸収されません。そのため、色素本来のピンクや赤色が発色します。"
+  }
+]</pre>
+                <ul style="padding-left:1.2rem; margin-top:0.8rem;">
+                    <li><strong>id</strong>: 問題ID。</li>
+                    <li><strong>q</strong>: 問題文。解答後に表示される説明文（誤答選択肢の場合）を兼ねます。</li>
+                    <li><strong>a</strong>: 解答。</li>
+                    <li><strong>detail</strong>: 解答後に表示される説明文。問題文よりも詳細な補足説明文を想定しています。空欄でもOK。</li>
+                </ul>
+            </div>
+            <button class="start-btn" onclick="state.screen='menu'; render();">メニューに戻る</button>
+        </div>
+    `;
+
     } else if (state.screen === 'history') {
         const history = JSON.parse(localStorage.getItem('quiz_history') || '[]');
         app.innerHTML = `
@@ -659,14 +720,6 @@ function toggleSound(checked) {
 
 function toggleStarMode(checked) {
     if (checked) {
-        const stars = loadStars(currentFileName);
-        if (stars.length === 0) {
-            alert('スターがついた問題がありません。\n先に問題に ★ をつけてください。');
-            // チェックを戻す
-            const chk = document.getElementById('star-mode-chk');
-            if (chk) chk.checked = false;
-            return;
-        }
         state.isStarMode = true;
         state.isAllQuestions = false;
     } else {
