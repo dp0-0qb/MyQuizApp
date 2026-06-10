@@ -637,16 +637,20 @@ function render() {
             <h1>使い方</h1>
             <div style="text-align:left; line-height:1.8; font-size:0.95rem;">
                 <p><strong>このアプリについて</strong></p>
-                <p>作成したJSONファイルから、ランダムに問題を出題する学習アプリです。<br><br>
-                - 選択肢から解答する4択モードと、単語カードのようにめくって解答するフラッシュカードモードがあります。<br>
-                - 問題に⭐マークをつけることで、特に練習したい問題を繰り返し解くことができます。<br>
-                - 日々の学習記録を保存することができます。<br>
-                - ⭐マークと学習記録のデータはブラウザに保存されます。</p>
+                <p>作成したJSONファイルから、ランダムに問題を出題する学習アプリです。</p>
+                
+                <ul style="padding-left:1.2rem; margin-top:0.8rem;">
+                <li>選択肢から解答する4択モードと、単語カードのようにめくって解答するフラッシュカードモードがあります。</li>
+                <li>問題に⭐マークをつけることで、特に練習したい問題を繰り返し解くことができます。</li>
+                <li>日々の学習記録を保存することができます。</li>
+                <li>⭐マークと学習記録のデータはブラウザに保存されます。
+                </ul>
 
                 <hr style="border:none; border-top:1px solid var(--border); margin:1.2rem 0;">
 
                 <p><strong>JSONの記述ルール</strong></p>
-                <p>id、q、a、detail が1問分のデータのかたまりです。</p>
+                <p>id、q、a、detail が1問分のデータのかたまりです。<br>
+                ⭐マークのデータはJSONファイルの名称ごとに管理されるため、ファイル名の変更には注意が必要です。</p>
                 <pre style="background:#f8fafc; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; border:1px solid var(--border);">[
   {
     "id": "A12345",
