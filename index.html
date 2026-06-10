@@ -634,11 +634,14 @@ function render() {
     } else if (state.screen === 'help') {
     app.innerHTML = `
         <div class="menu-screen">
-            <h1>このアプリについて</h1>
+            <h1>使い方</h1>
             <div style="text-align:left; line-height:1.8; font-size:0.95rem;">
-                <p><strong>学習用アプリとしてご利用ください</strong></p>
-                <p>作成したJSONファイルからランダムに問題を出題するアプリです。<br>
-                選択肢から解答する4択モードと、単語カードのようにめくって解答するフラッシュカードモードがあります。</p>
+                <p><strong>このアプリについて</strong></p>
+                <p>作成したJSONファイルから、ランダムに問題を出題する学習アプリです。<br><br>
+                - 選択肢から解答する4択モードと、単語カードのようにめくって解答するフラッシュカードモードがあります。<br>
+                - 問題に⭐マークをつけることで、特に練習したい問題を繰り返し解くことができます。<br>
+                - 日々の学習記録を保存することができます。<br>
+                - ⭐マークと学習記録のデータはブラウザに保存されます。</p>
 
                 <hr style="border:none; border-top:1px solid var(--border); margin:1.2rem 0;">
 
@@ -646,14 +649,14 @@ function render() {
                 <p>id、q、a、detail が1問分のデータのかたまりです。</p>
                 <pre style="background:#f8fafc; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; border:1px solid var(--border);">[
   {
-    "id": "12345",
+    "id": "A12345",
     "q": "土壌の酸性度によって花色が変わる、梅雨の時期に咲く花は？",
     "a": "紫陽花",
-    "detail": "土が酸性（pHが低い）だと、土に含まれるアルミニウムが溶け出しやすくなり、紫陽花がこれを吸収します。吸収されたアルミニウムと色素が結合することで、鮮やかな青色に変化します。土がアルカリ性（pHが高い）だと、アルミニウムが溶け出さず根から吸収されません。そのため、色素本来のピンクや赤色が発色します。"
+    "detail": "土が酸性（低pH）だと、土に含まれるアルミニウムが溶け出しやすくなり、紫陽花がこれを吸収します。吸収されたアルミニウムと色素が結合することで、鮮やかな青色に変化します。土がアルカリ性（高pH）だと、アルミニウムが溶け出さず根から吸収されません。そのため、色素本来のピンクや赤色が発色します。"
   }
 ]</pre>
                 <ul style="padding-left:1.2rem; margin-top:0.8rem;">
-                    <li><strong>id</strong>: 問題ID。</li>
+                    <li><strong>id</strong>: 問題ID。決まった形はありませんが、一意の値である必要があります。</li>
                     <li><strong>q</strong>: 問題文。解答後に表示される説明文（誤答選択肢の場合）を兼ねます。</li>
                     <li><strong>a</strong>: 解答。</li>
                     <li><strong>detail</strong>: 解答後に表示される説明文。問題文よりも詳細な補足説明文を想定しています。空欄でもOK。</li>
