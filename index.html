@@ -464,7 +464,7 @@ function render() {
         app.innerHTML = `
             <div class="menu-screen">
                 <button class="help-btn" onclick="state.screen='help'; render();" title="使い方">？</button>
-                <img src="images/TitleImage.png" alt="My Quiz" class="title-image">
+                <img src="images/TitleImage.png" alt="TitleImage" class="title-image"  style="width: 250px;>
                 <div class="settings">
                     <label class="slider-label" style="text-align:center;">出題モードを選択</label>
                     <div class="mode-selection">
@@ -636,6 +636,9 @@ function render() {
         <div class="menu-screen">
             <h1>使い方</h1>
             <div style="text-align:left; line-height:1.8; font-size:0.95rem;">
+
+            <img src="images/Sleep.png" alt="Sleep" class="title-image" style="width: 250px;">
+
                 <p><strong>このアプリについて</strong></p>
                 <p>作成したJSONファイルから、ランダムに問題を出題する学習アプリです。</p>
                 
@@ -681,6 +684,7 @@ function render() {
                             <thead>
                                 <tr style="border-bottom: 2px solid var(--border); color: var(--text-sub);">
                                     <th style="padding: 6px;">日時</th>
+                                    <th style="padding: 6px;">学習ファイル</th>
                                     <th style="padding: 6px; text-align: center;">出題数</th>
                                     <th style="padding: 6px; text-align: right;">正答率</th>
                                 </tr>
@@ -689,6 +693,7 @@ function render() {
                                 ${history.map(h => `
                                     <tr style="border-bottom: 1px solid var(--border);">
                                         <td style="padding: 6px; color:var(--text-sub);">${h.date}</td>
+                                        <td style="padding: 6px; color:var(--text-sub); word-break: break-all;">${escapeHtml(h.fileName || '-')}</td>
                                         <td style="padding: 6px; text-align: center;">${h.total}問</td>
                                         <td style="padding: 6px; text-align: right; font-weight: bold; color: var(--accent);">${h.rate}%</td>
                                     </tr>
@@ -851,7 +856,8 @@ function saveRecord() {
     const newRecord = {
         date: dateStr,
         total: actualTotal,
-        rate: rate
+        rate: rate,
+        fileName: currentFileName
     };
 
     const history = JSON.parse(localStorage.getItem('quiz_history') || '[]');
