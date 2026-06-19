@@ -565,11 +565,18 @@ function render() {
                         </div>
 
                         <div class="other-options-title">その他の選択肢:</div>
-                        ${wrongAnswersObj.map(choice => `
-                            <div class="expl-box">
-                                <a href="https://www.google.com/search?q=${encodeURIComponent(choice.term)}" target="_blank" rel="noopener noreferrer" class="expl-term">${choice.term}</a>: ${choice.def}
+                        ${wrongAnswersObj.map(choice => {
+                            const choiceStarred = choice.id ? isStarred(choice.id) : false;
+                            const choiceStarLabel = choiceStarred ? '★' : '☆';
+                            return `
+                            <div class="expl-box" style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
+                                <div>
+                                    <a href="https://www.google.com/search?q=${encodeURIComponent(choice.term)}" target="_blank" rel="noopener noreferrer" class="expl-term">${choice.term}</a>: ${choice.def}
+                                </div>
+                                ${choice.id ? `<button class="star-btn" style="flex-shrink:0;" onclick="toggleStar('${escapeHtml(choice.id)}'); render();" title="${choiceStarred ? 'スターを外す' : 'スターをつける'}">${choiceStarLabel}</button>` : ''}
                             </div>
-                        `).join('')}
+                        `;
+                        }).join('')}
                     </div>
                     <button class="next-btn" onclick="nextQuestion()">
                         ${state.currentIndex + 1 >= actualTotal ? '最終結果を見る' : '次の問題へ'}
@@ -794,8 +801,8 @@ function startQuiz() {
             .slice(0, 3);
         
         const choices = [
-            { term: item.a, def: item.q, detail: item.detail || null },
-            ...others.map(o => ({ term: o.a, def: o.q, detail: null }))
+            { term: item.a, def: item.q, detail: item.detail || null, id: item.id || null },
+            ...others.map(o => ({ term: o.a, def: o.q, detail: null, id: o.id || null }))
         ].sort(() => Math.random() - 0.5);
 
         return { id: item.id || null, q: item.q, a: item.a, detail: item.detail, choices: choices };
