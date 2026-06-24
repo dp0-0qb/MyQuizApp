@@ -302,6 +302,27 @@
             border-color: var(--accent);
             color: var(--accent);
         }
+
+    /* ─── スター一覧 ─── */
+        .star-list-item {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .star-list-item:last-child { border-bottom: none; }
+        .star-list-q {
+            font-size: 0.85rem; color: var(--text-sub); margin-bottom: 4px; line-height: 1.5;
+        }
+        .star-list-a {
+            font-size: 1rem; font-weight: bold; color: var(--accent);
+        }
+        .star-list-back-btn {
+            display: flex; align-items: center; gap: 6px;
+            background: none; border: none; color: var(--text-sub);
+            font-size: 0.95rem; cursor: pointer; padding: 0 0 1rem 0;
+            font-weight: bold;
+        }
+        .star-list-back-btn:hover { color: var(--text-main); }
+
     </style>
 </head>
 <body>
@@ -375,7 +396,7 @@ function closeStarModal() {
     modal.style.display = 'none';
 }
 
-function renderStarModal() {
+function renderStarModal(viewFileName = null) {
     // LocalStorage内のスターキーを全列挙
     const starEntries = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -385,31 +406,82 @@ function renderStarModal() {
             try {
                 const ids = JSON.parse(localStorage.getItem(key) || '[]');
                 if (ids.length > 0) {
-                    starEntries.push({ fileName, count: ids.length, key });
+                    starEntries.push({ fileName, count: ids.length, key, ids });
                 }
             } catch(e) {}
         }
     }
 
+    // 一覧表示
+    if (viewFileName !== null) {
+        const entry = starEntries.find(e => e.fileName === viewFileName);
+        const isLoaded = (viewFileName === currentFileName);
+        let listHtml;
+
+        if (!entry) {
+            listHtml = `<div class="empty-star-msg">該当データがありません。</div>`;
+        } else if (!isLoaded) {
+            listHtml = `<div class="empty-star-msg" style="line-height:1.8;">
+                このファイルは現在読み込まれていないため<br>一覧を表示できません。<br>
+                <span style="font-size:0.8rem;">（メニューから該当ファイルを読み込んでください）</span>
+            </div>`;
+        } else {
+            const starred = currentData.filter(item => item.id && entry.ids.includes(item.id));
+            if (starred.length === 0) {
+                listHtml = `<div class="empty-star-msg">スター付きの問題が見つかりません。</div>`;
+            } else {
+                listHtml = starred.map((item, i) => `
+                    <div class="star-list-item">
+                        <div class="star-list-q">Q. ${escapeHtml(item.q)}</div>
+                        <div class="star-list-q">A. ${escapeHtml(item.a)}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+    document.getElementById('star-modal').innerHTML = `
+            <div class="modal-overlay" onclick="closeStarModal()">
+                <div class="modal-box" onclick="event.stopPropagation()">
+                    <button class="modal-close-btn" onclick="closeStarModal()">✕</button>
+                    <div class="modal-title">${escapeHtml(viewFileName)}の⭐スター問題</div>
+                    <div style="font-size:0.8rem; color:var(--text-sub); text-align:center; margin-bottom:1rem;">${entry ? entry.count : 0}件</div>
+                    <div style="max-height: 50vh; overflow-y: auto;">${listHtml}</div>
+                    <button class="secondary-btn" style="margin-top:1.2rem;" onclick="renderStarModal()">⭐ スター管理へ戻る</button>
+                </div>
+            </div>
+        `;
+
+        return;
+    }
+
+    // 学習セット選択
     const rowsHtml = starEntries.length === 0
         ? `<div class="empty-star-msg">★ の付いた問題はまだありません。</div>`
-        : starEntries.map(entry => `
+        : starEntries.map(entry => {
+            const isLoaded = (entry.fileName === currentFileName);
+            return `
             <div class="star-manage-row">
                 <div>
                     <div class="star-manage-filename">${escapeHtml(entry.fileName)}</div>
                     <div class="star-manage-count">★ ${entry.count}件</div>
                 </div>
-                <button class="star-manage-del-btn" onclick="deleteStarData('${escapeHtml(entry.key)}', '${escapeHtml(entry.fileName)}')">削除</button>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="secondary-btn" style="padding:6px 12px; margin:0; font-size:0.85rem; width:auto; ${!isLoaded ? 'opacity:0.35; cursor:not-allowed;' : ''}"
+                        ${isLoaded ? `onclick="renderStarModal('${escapeHtml(entry.fileName)}')"` : 'disabled'}>一覧</button>
+                    <button class="star-manage-del-btn" onclick="deleteStarData('${escapeHtml(entry.key)}', '${escapeHtml(entry.fileName)}')">削除</button>
+                </div>
             </div>
-        `).join('');
+        `}).join('');
 
-    document.getElementById('star-modal').innerHTML = `
+        document.getElementById('star-modal').innerHTML = `
         <div class="modal-overlay" onclick="closeStarModal()">
             <div class="modal-box" onclick="event.stopPropagation()">
                 <button class="modal-close-btn" onclick="closeStarModal()">✕</button>
                 <div class="modal-title">⭐ スター管理</div>
+                <div style="font-size:0.8rem; color:var(--text-sub); background:#fafbfc; border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-bottom:1rem; line-height:1.6;">
+                    ℹ️ 問題の一覧表示は、現在読み込んでいる学習セットのみ対応しています。
+                </div>
                 ${rowsHtml}
-                <button class="secondary-btn" style="margin-top:1.2rem;" onclick="closeStarModal()">閉じる</button>
             </div>
         </div>
     `;
@@ -653,7 +725,7 @@ function render() {
                 <li>選択肢から解答する4択モードと、単語カードのようにめくって解答するフラッシュカードモードがあります。</li>
                 <li>問題に⭐マークをつけることで、特に練習したい問題を繰り返し解くことができます。</li>
                 <li>日々の学習記録を保存することができます。</li>
-                <li>⭐マークと学習記録のデータはブラウザに保存されます。
+                <li>⭐マークと学習記録のデータはLocalStorageに保存されます。
                 </ul>
 
                 <hr style="border:none; border-top:1px solid var(--border); margin:1.2rem 0;">
