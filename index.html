@@ -335,7 +335,8 @@
 // 音声のプリロード
 const sounds = {
     correct: new Audio('sounds/correct.mp3'),
-    wrong: new Audio('sounds/wrong.mp3')
+    wrong: new Audio('sounds/wrong.mp3'),
+    card: new Audio('sounds/card.mp3')
 };
 
 let currentData = [
@@ -519,7 +520,8 @@ let state = {
     quizList: [],
     selectedAnswer: null,
     isCorrect: false,
-    isSaved: false 
+    isSaved: false,
+    flashcardKnown: 0
 };
 
 // ─── レンダリング ─────────────────────────────────────────────
@@ -571,14 +573,11 @@ function render() {
                                     onchange="toggleStarMode(this.checked)">
                                 <span>⭐ スター集中モード${starCount > 0 ? ` (${starCount}問)` : ' (未登録)'}</span>
                             </label>
-                            <label class="custom-toggle" style="${state.mode === 'flashcard' ? 'opacity:0.4; cursor:not-allowed;' : ''}">
+                            <label class="custom-toggle">
                                 <input type="checkbox" ${state.isSoundEnabled ? 'checked' : ''} 
-                                       ${state.mode === 'flashcard' ? 'disabled' : ''}
                                        onchange="toggleSound(this.checked)">
                                 <span>効果音を鳴らす</span>
                             </label>
-
-
                         </div>
                     </div>
                 </div>
@@ -665,7 +664,7 @@ function render() {
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         ${qId ? `<button class="star-btn" onclick="toggleStar('${escapeHtml(qId)}')" title="${starred ? 'スターを外す' : 'スターをつける'}">${starLabel}</button>` : ''}
-                        <span class="quiz-header-right">フラッシュカード</span>
+                        <span class="quiz-header-right">わかった: ${state.flashcardKnown}</span>
                     </div>
                 </div>
                 <div class="progress-container"><div class="progress-bar" style="width:${progress}%"></div></div>
@@ -682,25 +681,36 @@ function render() {
                         <div class="expl-title">正解の解説:</div>
                         <div class="expl-box">
                             <a href="https://www.google.com/search?q=${encodeURIComponent(q.a)}" target="_blank" rel="noopener noreferrer" class="expl-term">${q.a}</a>: 
-                            <span class="detail-text">${q.detail || '解説はありません。'}</span>
+                            <span class="detail-text">${q.detail || '（くわしい解説はありません）'}</span>
                         </div>
                     </div>
-                    <button class="next-btn" onclick="nextQuestion()">
-                        ${state.currentIndex + 1 >= actualTotal ? '終了してメニューへ' : '次の問題へ'}
-                    </button>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:1rem;">
+                        <button class="next-btn" style="margin-top:0; background:var(--correct); box-shadow:0 4px 12px rgba(72,187,120,0.3);"
+                            onclick="state.flashcardKnown++; nextQuestion();">
+                            わかった
+                        </button>
+                        <button class="next-btn" style="margin-top:0; background:var(--wrong); box-shadow:0 4px 12px rgba(245,101,101,0.3);"
+                            onclick="nextQuestion();">
+                            わからなかった
+                        </button>
+                    </div>
                 </div>
             `;
         }
     } else if (state.screen === 'result') {
         const actualTotal = state.quizList.length;
-        const rate = Math.round((state.score / actualTotal) * 100);
+        const isFlashcard = state.mode === 'flashcard';
+        const scoreVal = isFlashcard ? state.flashcardKnown : state.score;
+        const rate = Math.round((scoreVal / actualTotal) * 100);
         app.innerHTML = `
             <div class="menu-screen" style="text-align: center;"> <h1>結果発表</h1>
                 
                 <img src="images/Finish.png" alt="Finish" class="title-image" style="width: 250px;">
                 
-                <div style="font-size:3.5rem; font-weight:bold; color:var(--accent); margin: 1rem 0; text-align: center;">${state.score} / ${actualTotal}</div>
-                <p style="font-size:1.2rem; margin-bottom:2rem; text-align: center;">正解率: ${rate}%</p>
+                <div style="font-size:3.5rem; font-weight:bold; color:var(--accent); margin: 1rem 0; text-align: center;">${scoreVal} / ${actualTotal}</div>
+                <p style="font-size:1.2rem; margin-bottom:2rem; text-align: center;">
+                    ${isFlashcard ? 'わかった割合' : '正解率'}: ${rate}%
+                </p>
                 
                 <button class="start-btn" onclick="saveRecord()" ${state.isSaved ? 'disabled style="background:var(--text-sub); box-shadow:none; cursor:not-allowed;"' : ''}>
                     ${state.isSaved ? '✓ 記録を保存しました' : '今日の記録を保存する'}
@@ -764,6 +774,7 @@ function render() {
                                 <tr style="border-bottom: 2px solid var(--border); color: var(--text-sub);">
                                     <th style="padding: 6px;">日時</th>
                                     <th style="padding: 6px;">学習ファイル</th>
+                                    <th style="padding: 6px; text-align: center;">モード</th>
                                     <th style="padding: 6px; text-align: center;">出題数</th>
                                     <th style="padding: 6px; text-align: right;">正答率</th>
                                 </tr>
@@ -773,6 +784,7 @@ function render() {
                                     <tr style="border-bottom: 1px solid var(--border);">
                                         <td style="padding: 6px; color:var(--text-sub);">${h.date}</td>
                                         <td style="padding: 6px; color:var(--text-sub); word-break: break-all;">${escapeHtml(h.fileName || '-')}</td>
+                                        <td style="padding: 6px; text-align: center; font-size:0.8rem;">${h.mode === 'flashcard' ? 'FC' : h.mode === 'quiz' ? '4択' : '-'}</td>
                                         <td style="padding: 6px; text-align: center;">${h.total}問</td>
                                         <td style="padding: 6px; text-align: right; font-weight: bold; color: var(--accent);">${h.rate}%</td>
                                     </tr>
@@ -846,6 +858,7 @@ function startQuiz() {
     state.screen = 'quiz';
     state.selectedAnswer = null;
     state.isSaved = false;
+    state.flashcardKnown = 0;
 
     let pool;
     if (state.isStarMode) {
@@ -899,19 +912,19 @@ function checkAnswer(ans) {
 }
 
 function revealFlashcard() {
-    if (state.selectedAnswer) return; 
-    state.selectedAnswer = true; 
+    if (state.selectedAnswer) return;
+    if (state.isSoundEnabled) {
+        sounds.card.currentTime = 0;
+        sounds.card.play().catch(e => console.log("Audio play failed", e));
+    }
+    state.selectedAnswer = true;
     render();
 }
 
 function nextQuestion() {
     state.currentIndex++;
     if (state.currentIndex >= state.quizList.length) {
-        if (state.mode === 'flashcard') {
-            state.screen = 'menu';
-        } else {
-            state.screen = 'result';
-        }
+        state.screen = 'result';
     } else {
         state.selectedAnswer = null;
     }
@@ -922,7 +935,9 @@ function saveRecord() {
     if (state.isSaved) return;
 
     const actualTotal = state.quizList.length;
-    const rate = Math.round((state.score / actualTotal) * 100);
+    const isFlashcard = state.mode === 'flashcard';
+    const scoreVal = isFlashcard ? state.flashcardKnown : state.score;
+    const rate = Math.round((scoreVal / actualTotal) * 100);
     
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -936,7 +951,8 @@ function saveRecord() {
         date: dateStr,
         total: actualTotal,
         rate: rate,
-        fileName: currentFileName
+        fileName: currentFileName,
+        mode: state.mode
     };
 
     const history = JSON.parse(localStorage.getItem('quiz_history') || '[]');
