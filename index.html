@@ -332,12 +332,50 @@
 <div id="star-modal" style="display:none;"></div>
 
 <script>
-// 音声のプリロード
-const sounds = {
-    correct: new Audio('sounds/correct.mp3'),
-    wrong: new Audio('sounds/wrong.mp3'),
-    card: new Audio('sounds/card.mp3')
+// 音声のプリロード（Web Audio APIでデコード済みバッファを保持し、再生ラグを解消）
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioCtx();
+const soundBuffers = {};
+const soundUrls = {
+    correct: 'sounds/correct.mp3',
+    wrong: 'sounds/wrong.mp3',
+    card: 'sounds/card.mp3'
 };
+
+async function loadSound(name, url) {
+    try {
+        const res = await fetch(url);
+        const arrayBuffer = await res.arrayBuffer();
+        soundBuffers[name] = await audioCtx.decodeAudioData(arrayBuffer);
+    } catch (e) {
+        console.log('Sound load failed:', name, e);
+    }
+}
+Object.entries(soundUrls).forEach(([name, url]) => loadSound(name, url));
+
+// iOS/Safari等はユーザー操作がないとAudioContextが自動でサスペンドされるため、
+// 最初のタップ/クリックで再開しておく
+function unlockAudioContext() {
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    document.removeEventListener('click', unlockAudioContext);
+    document.removeEventListener('touchstart', unlockAudioContext);
+}
+document.addEventListener('click', unlockAudioContext);
+document.addEventListener('touchstart', unlockAudioContext);
+
+function playSound(name) {
+    const buffer = soundBuffers[name];
+    if (!buffer) return; // まだデコード完了していない場合は無視
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtx.destination);
+    source.start(0);
+}
 
 let currentData = [
     {"id":"demo01","q":"物理回線の種類を問わずソフトウェアで一元管理し、トラフィックを最適化する技術。","a":"SD-WAN", "detail":"拠点のルーターをクラウド上で一括制御。重要通信を安定した経路へ自動で振り分ける「インターネットブレイクアウト」が代表的な機能です。"},
@@ -900,9 +938,7 @@ function checkAnswer(ans) {
     state.isCorrect = (ans === state.quizList[state.currentIndex].a);
     
     if (state.isSoundEnabled && state.mode === 'quiz') {
-        const sound = state.isCorrect ? sounds.correct : sounds.wrong;
-        sound.currentTime = 0; 
-        sound.play().catch(e => console.log("Audio play failed", e));
+        playSound(state.isCorrect ? 'correct' : 'wrong');
     }
 
     if (state.isCorrect) {
@@ -914,8 +950,7 @@ function checkAnswer(ans) {
 function revealFlashcard() {
     if (state.selectedAnswer) return;
     if (state.isSoundEnabled) {
-        sounds.card.currentTime = 0;
-        sounds.card.play().catch(e => console.log("Audio play failed", e));
+        playSound('card');
     }
     state.selectedAnswer = true;
     render();
