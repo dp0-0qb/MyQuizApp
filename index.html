@@ -16,6 +16,7 @@
             --text-sub: #718096;
             --border: #e2e8f0;
             --star-color: #f6ad55;
+            --weak-color: #ed64a6;
         }
 
         body {
@@ -104,6 +105,20 @@
             font-size: 1rem; 
             font-weight: bold;
             color: var(--star-color);
+            padding: 4px 0;
+            cursor: pointer;
+            width: fit-content;
+            min-width: 280px;
+            text-align: left;
+        }
+
+        /* 弱点集中モード トグル */
+        .weak-mode-toggle {
+            display: flex; align-items: center;
+            gap: 12px; 
+            font-size: 1rem; 
+            font-weight: bold;
+            color: var(--weak-color);
             padding: 4px 0;
             cursor: pointer;
             width: fit-content;
@@ -209,6 +224,19 @@
         .star-mode-badge {
             display: inline-block;
             background: var(--star-color);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        /* 弱点集中モード中のバッジ */
+        .weak-mode-badge {
+            display: inline-block;
+            background: var(--weak-color);
             color: #fff;
             font-size: 0.75rem;
             font-weight: bold;
@@ -330,6 +358,8 @@
 <div id="app"></div>
 <!-- スター管理モーダル（app外に配置） -->
 <div id="star-modal" style="display:none;"></div>
+<!-- 弱点管理モーダル（app外に配置） -->
+<div id="weak-modal" style="display:none;"></div>
 
 <script>
 // 音声のプリロード（Web Audio APIでデコード済みバッファを保持し、再生ラグを解消）
@@ -535,6 +565,161 @@ function deleteStarData(key, fileName) {
     }
 }
 
+// ─── 弱点管理 ───────────────────────────────────────────────
+// LocalStorageのキー: `weak_${ファイル名}`
+// 値: JSON配列 ["id1","id2",...]
+// 4択モードで不正解、またはフラッシュカードモードで「わからなかった」を選んだ問題のidを保存。
+// 正解（「わかった」）した時点でそのidは弱点から削除される。
+
+function getWeakKey(fileName) {
+    return 'weak_' + fileName;
+}
+
+function loadWeaknesses(fileName) {
+    try {
+        return JSON.parse(localStorage.getItem(getWeakKey(fileName)) || '[]');
+    } catch(e) { return []; }
+}
+
+function saveWeaknesses(fileName, weakIds) {
+    localStorage.setItem(getWeakKey(fileName), JSON.stringify(weakIds));
+}
+
+function addWeakness(itemId) {
+    if (!itemId) return;
+    let weak = loadWeaknesses(currentFileName);
+    if (!weak.includes(itemId)) {
+        weak.push(itemId);
+        saveWeaknesses(currentFileName, weak);
+    }
+}
+
+function removeWeakness(itemId) {
+    if (!itemId) return;
+    let weak = loadWeaknesses(currentFileName);
+    if (weak.includes(itemId)) {
+        weak = weak.filter(id => id !== itemId);
+        saveWeaknesses(currentFileName, weak);
+    }
+}
+
+function isWeak(itemId) {
+    return loadWeaknesses(currentFileName).includes(itemId);
+}
+
+// ─── 弱点管理モーダル ───────────────────────────────────────
+
+function openWeakModal() {
+    const modal = document.getElementById('weak-modal');
+    modal.style.display = 'flex';
+    renderWeakModal();
+}
+
+function closeWeakModal() {
+    const modal = document.getElementById('weak-modal');
+    modal.style.display = 'none';
+}
+
+function renderWeakModal(viewFileName = null) {
+    // LocalStorage内の弱点キーを全列挙
+    const weakEntries = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('weak_')) {
+            const fileName = key.slice('weak_'.length);
+            try {
+                const ids = JSON.parse(localStorage.getItem(key) || '[]');
+                if (ids.length > 0) {
+                    weakEntries.push({ fileName, count: ids.length, key, ids });
+                }
+            } catch(e) {}
+        }
+    }
+
+    // 一覧表示
+    if (viewFileName !== null) {
+        const entry = weakEntries.find(e => e.fileName === viewFileName);
+        const isLoaded = (viewFileName === currentFileName);
+        let listHtml;
+
+        if (!entry) {
+            listHtml = `<div class="empty-star-msg">該当データがありません。</div>`;
+        } else if (!isLoaded) {
+            listHtml = `<div class="empty-star-msg" style="line-height:1.8;">
+                このファイルは現在読み込まれていないため<br>一覧を表示できません。<br>
+                <span style="font-size:0.8rem;">（メニューから該当ファイルを読み込んでください）</span>
+            </div>`;
+        } else {
+            const weakItems = currentData.filter(item => item.id && entry.ids.includes(item.id));
+            if (weakItems.length === 0) {
+                listHtml = `<div class="empty-star-msg">弱点登録された問題が見つかりません。</div>`;
+            } else {
+                listHtml = weakItems.map(item => `
+                    <div class="star-list-item">
+                        <div class="star-list-q">Q. ${escapeHtml(item.q)}</div>
+                        <div class="star-list-q">A. ${escapeHtml(item.a)}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+    document.getElementById('weak-modal').innerHTML = `
+            <div class="modal-overlay" onclick="closeWeakModal()">
+                <div class="modal-box" onclick="event.stopPropagation()">
+                    <button class="modal-close-btn" onclick="closeWeakModal()">✕</button>
+                    <div class="modal-title">${escapeHtml(viewFileName)}の🔥弱点問題</div>
+                    <div style="font-size:0.8rem; color:var(--text-sub); text-align:center; margin-bottom:1rem;">${entry ? entry.count : 0}件</div>
+                    <div style="max-height: 50vh; overflow-y: auto;">${listHtml}</div>
+                    <button class="secondary-btn" style="margin-top:1.2rem;" onclick="renderWeakModal()">🔥 弱点管理へ戻る</button>
+                </div>
+            </div>
+        `;
+
+        return;
+    }
+
+    // 学習セット選択
+    const rowsHtml = weakEntries.length === 0
+        ? `<div class="empty-star-msg">弱点登録された問題はまだありません。</div>`
+        : weakEntries.map(entry => {
+            const isLoaded = (entry.fileName === currentFileName);
+            return `
+            <div class="star-manage-row">
+                <div>
+                    <div class="star-manage-filename">${escapeHtml(entry.fileName)}</div>
+                    <div class="star-manage-count">🔥 ${entry.count}件</div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="secondary-btn" style="padding:6px 12px; margin:0; font-size:0.85rem; width:auto; ${!isLoaded ? 'opacity:0.35; cursor:not-allowed;' : ''}"
+                        ${isLoaded ? `onclick="renderWeakModal('${escapeHtml(entry.fileName)}')"` : 'disabled'}>一覧</button>
+                    <button class="star-manage-del-btn" onclick="deleteWeakData('${escapeHtml(entry.key)}', '${escapeHtml(entry.fileName)}')">削除</button>
+                </div>
+            </div>
+        `}).join('');
+
+        document.getElementById('weak-modal').innerHTML = `
+        <div class="modal-overlay" onclick="closeWeakModal()">
+            <div class="modal-box" onclick="event.stopPropagation()">
+                <button class="modal-close-btn" onclick="closeWeakModal()">✕</button>
+                <div class="modal-title">🔥 弱点管理</div>
+                <div style="font-size:0.8rem; color:var(--text-sub); background:#fafbfc; border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-bottom:1rem; line-height:1.6;">
+                    ℹ️ 問題の一覧表示は、現在読み込んでいる学習セットのみ対応しています。
+                </div>
+                ${rowsHtml}
+            </div>
+        </div>
+    `;
+}
+
+function deleteWeakData(key, fileName) {
+    if (confirm(`「${fileName}」の弱点登録をすべて削除しますか？`)) {
+        localStorage.removeItem(key);
+        renderWeakModal();
+        // 現在開いているファイルなら再描画
+        if (fileName === currentFileName) render();
+    }
+}
+
 function escapeHtml(str) {
     return String(str)
         .replace(/&/g, '&amp;')
@@ -555,6 +740,7 @@ let state = {
     isAllQuestions: false,
     isSoundEnabled: true,
     isStarMode: false,      // スター集中モード
+    isWeakMode: false,      // 弱点集中モード
     quizList: [],
     selectedAnswer: null,
     isCorrect: false,
@@ -570,6 +756,8 @@ function render() {
     if (state.screen === 'menu') {
         const stars = loadStars(currentFileName);
         const starCount = stars.length;
+        const weaks = loadWeaknesses(currentFileName);
+        const weakCount = weaks.length;
         const maxTenStep = Math.max(10, Math.floor(currentData.length / 10) * 10);
         const displayCount = state.isAllQuestions ? currentData.length : Math.min(state.questionCount, currentData.length);
 
@@ -594,13 +782,13 @@ function render() {
                         <input type="range" id="q-slider" 
                                min="10" step="10" max="${maxTenStep}" 
                                value="${state.questionCount}" 
-                               ${state.isAllQuestions || state.isStarMode ? 'disabled' : ''}
+                               ${state.isAllQuestions || state.isStarMode || state.isWeakMode ? 'disabled' : ''}
                                oninput="updateCount(this.value)">
                         
                         <div class="toggle-group">
                             <label class="custom-toggle">
                                 <input type="checkbox" ${state.isAllQuestions ? 'checked' : ''} 
-                                       ${state.isStarMode ? 'disabled' : ''}
+                                       ${state.isStarMode || state.isWeakMode ? 'disabled' : ''}
                                        onchange="toggleAllQuestions(this.checked)">
                                 <span>全問出題モード (${currentData.length}問)</span>
                             </label>
@@ -610,6 +798,13 @@ function render() {
                                     ${starCount === 0 ? 'disabled' : ''}
                                     onchange="toggleStarMode(this.checked)">
                                 <span>⭐ スター集中モード${starCount > 0 ? ` (${starCount}問)` : ' (未登録)'}</span>
+                            </label>
+                            <label class="weak-mode-toggle" style="${weakCount === 0 ? 'opacity:0.4; cursor:not-allowed;' : ''}">
+                                <input type="checkbox" id="weak-mode-chk" 
+                                    ${state.isWeakMode ? 'checked' : ''}
+                                    ${weakCount === 0 ? 'disabled' : ''}
+                                    onchange="toggleWeakMode(this.checked)">
+                                <span>🔥 弱点集中モード${weakCount > 0 ? ` (${weakCount}問)` : ' (未登録)'}</span>
                             </label>
                             <label class="custom-toggle">
                                 <input type="checkbox" ${state.isSoundEnabled ? 'checked' : ''} 
@@ -621,6 +816,7 @@ function render() {
                 </div>
                 <button class="start-btn" onclick="startQuiz()">出題開始</button>
                 <button class="secondary-btn" onclick="openStarModal()">⭐ スター管理</button>
+                <button class="secondary-btn" onclick="openWeakModal()">🔥 弱点管理</button>
                 <button class="secondary-btn" onclick="showHistory()">これまでの記録</button>
             </div>
         `;
@@ -644,6 +840,7 @@ function render() {
                     <div class="quiz-header-left">
                         <span>${state.currentIndex + 1} / ${actualTotal}</span>
                         ${state.isStarMode ? '<span class="star-mode-badge">⭐集中</span>' : ''}
+                        ${state.isWeakMode ? '<span class="weak-mode-badge">🔥集中</span>' : ''}
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         ${qId ? `<button class="star-btn" onclick="toggleStar('${escapeHtml(qId)}')" title="${starred ? 'スターを外す' : 'スターをつける'}">${starLabel}</button>` : ''}
@@ -699,6 +896,7 @@ function render() {
                     <div class="quiz-header-left">
                         <span>${state.currentIndex + 1} / ${actualTotal}</span>
                         ${state.isStarMode ? '<span class="star-mode-badge">⭐集中</span>' : ''}
+                        ${state.isWeakMode ? '<span class="weak-mode-badge">🔥集中</span>' : ''}
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         ${qId ? `<button class="star-btn" onclick="toggleStar('${escapeHtml(qId)}')" title="${starred ? 'スターを外す' : 'スターをつける'}">${starLabel}</button>` : ''}
@@ -724,11 +922,11 @@ function render() {
                     </div>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:1rem;">
                         <button class="next-btn" style="margin-top:0; background:var(--correct); box-shadow:0 4px 12px rgba(72,187,120,0.3);"
-                            onclick="state.flashcardKnown++; nextQuestion();">
+                            onclick="${qId ? `removeWeakness('${escapeHtml(qId)}');` : ''}state.flashcardKnown++; nextQuestion();">
                             わかった
                         </button>
                         <button class="next-btn" style="margin-top:0; background:var(--wrong); box-shadow:0 4px 12px rgba(245,101,101,0.3);"
-                            onclick="nextQuestion();">
+                            onclick="${qId ? `addWeakness('${escapeHtml(qId)}');` : ''}nextQuestion();">
                             わからなかった
                         </button>
                     </div>
@@ -772,15 +970,16 @@ function render() {
                 <ul style="padding-left:1.2rem; margin-top:0.8rem;">
                 <li>選択肢から解答する4択モードと、単語カードのようにめくって解答するフラッシュカードモードがあります。</li>
                 <li>問題に⭐マークをつけることで、特に練習したい問題を繰り返し解くことができます。</li>
+                <li>4択モードで不正解になった問題、フラッシュカードモードで「わからなかった」を選んだ問題は自動的に🔥弱点として登録され、「弱点集中モード」で繰り返し復習できます。正解（「わかった」）するとその問題は弱点から自動的に外れます。</li>
                 <li>日々の学習記録を保存することができます。</li>
-                <li>⭐マークと学習記録のデータはLocalStorageに保存されます。
+                <li>⭐マークと🔥弱点、学習記録のデータはLocalStorageに保存されます。
                 </ul>
 
                 <hr style="border:none; border-top:1px solid var(--border); margin:1.2rem 0;">
 
                 <p><strong>JSONの記述ルール</strong></p>
                 <p>id、q、a、detail が1問分のデータのかたまりです。<br>
-                ⭐マークのデータはJSONファイルの名称ごとに管理されるため、ファイル名の変更には注意が必要です。</p>
+                ⭐マークと🔥弱点のデータはJSONファイルの名称ごとに管理されるため、ファイル名の変更には注意が必要です。</p>
                 <pre style="background:#f8fafc; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; border:1px solid var(--border);">[
   {
     "id": "A12345",
@@ -863,8 +1062,20 @@ function toggleStarMode(checked) {
     if (checked) {
         state.isStarMode = true;
         state.isAllQuestions = false;
+        state.isWeakMode = false;
     } else {
         state.isStarMode = false;
+    }
+    render();
+}
+
+function toggleWeakMode(checked) {
+    if (checked) {
+        state.isWeakMode = true;
+        state.isAllQuestions = false;
+        state.isStarMode = false;
+    } else {
+        state.isWeakMode = false;
     }
     render();
 }
@@ -882,6 +1093,7 @@ function handleFile(event) {
                 state.questionCount = data.length >= 10 ? 10 : data.length;
                 // スター集中モード中ならリセット（別ファイルになるため）
                 state.isStarMode = false;
+                state.isWeakMode = false;
                 render();
                 document.getElementById('file-status').innerText = `✅ ${data.length}問読み込み完了 (${file.name})`;
             }
@@ -905,6 +1117,16 @@ function startQuiz() {
         pool = currentData.filter(item => item.id && stars.includes(item.id));
         if (pool.length === 0) {
             alert('スターがついた問題がありません。集中モードをOFFにしてください。');
+            state.screen = 'menu';
+            render();
+            return;
+        }
+    } else if (state.isWeakMode) {
+        // 弱点登録された問題だけに絞る
+        const weaks = loadWeaknesses(currentFileName);
+        pool = currentData.filter(item => item.id && weaks.includes(item.id));
+        if (pool.length === 0) {
+            alert('弱点登録された問題がありません。集中モードをOFFにしてください。');
             state.screen = 'menu';
             render();
             return;
@@ -935,7 +1157,8 @@ function startQuiz() {
 
 function checkAnswer(ans) {
     state.selectedAnswer = ans;
-    state.isCorrect = (ans === state.quizList[state.currentIndex].a);
+    const currentQ = state.quizList[state.currentIndex];
+    state.isCorrect = (ans === currentQ.a);
     
     if (state.isSoundEnabled && state.mode === 'quiz') {
         playSound(state.isCorrect ? 'correct' : 'wrong');
@@ -943,6 +1166,9 @@ function checkAnswer(ans) {
 
     if (state.isCorrect) {
         state.score++;
+        if (currentQ.id) removeWeakness(currentQ.id);
+    } else {
+        if (currentQ.id) addWeakness(currentQ.id);
     }
     render();
 }
