@@ -67,7 +67,7 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
 
-        /* モード選択のスタイル */
+        /* 出題方法選択のスタイル */
         .mode-selection {
             display: flex; gap: 12px; margin-bottom: 1.5rem; justify-content: center;
         }
@@ -536,8 +536,9 @@ function renderStarModal(viewFileName = null) {
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
                     <button class="secondary-btn" style="padding:6px 12px; margin:0; font-size:0.85rem; width:auto; ${!isLoaded ? 'opacity:0.35; cursor:not-allowed;' : ''}"
-                        ${isLoaded ? `onclick="renderStarModal('${escapeHtml(entry.fileName)}')"` : 'disabled'}>一覧</button>
-                    <button class="star-manage-del-btn" onclick="deleteStarData('${escapeHtml(entry.key)}', '${escapeHtml(entry.fileName)}')">削除</button>
+                        data-filename="${escapeHtml(entry.fileName)}"
+                        ${isLoaded ? `onclick="renderStarModal(this.dataset.filename)"` : 'disabled'}>一覧</button>
+                    <button class="star-manage-del-btn" data-key="${escapeHtml(entry.key)}" data-filename="${escapeHtml(entry.fileName)}" onclick="deleteStarData(this.dataset.key, this.dataset.filename)">削除</button>
                 </div>
             </div>
         `}).join('');
@@ -568,7 +569,7 @@ function deleteStarData(key, fileName) {
 // ─── 弱点管理 ───────────────────────────────────────────────
 // LocalStorageのキー: `weak_${ファイル名}`
 // 値: JSON配列 ["id1","id2",...]
-// 4択モードで不正解、またはフラッシュカードモードで「わからなかった」を選んだ問題のidを保存。
+// 4択問題で不正解、またはフラッシュカードで「わからなかった」を選んだ問題のidを保存。
 // 正解（「わかった」）した時点でそのidは弱点から削除される。
 
 function getWeakKey(fileName) {
@@ -691,8 +692,9 @@ function renderWeakModal(viewFileName = null) {
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
                     <button class="secondary-btn" style="padding:6px 12px; margin:0; font-size:0.85rem; width:auto; ${!isLoaded ? 'opacity:0.35; cursor:not-allowed;' : ''}"
-                        ${isLoaded ? `onclick="renderWeakModal('${escapeHtml(entry.fileName)}')"` : 'disabled'}>一覧</button>
-                    <button class="star-manage-del-btn" onclick="deleteWeakData('${escapeHtml(entry.key)}', '${escapeHtml(entry.fileName)}')">削除</button>
+                        data-filename="${escapeHtml(entry.fileName)}"
+                        ${isLoaded ? `onclick="renderWeakModal(this.dataset.filename)"` : 'disabled'}>一覧</button>
+                    <button class="star-manage-del-btn" data-key="${escapeHtml(entry.key)}" data-filename="${escapeHtml(entry.fileName)}" onclick="deleteWeakData(this.dataset.key, this.dataset.filename)">削除</button>
                 </div>
             </div>
         `}).join('');
@@ -766,9 +768,9 @@ function render() {
                 <button class="help-btn" onclick="state.screen='help'; render();" title="使い方">？</button>
                 <img src="images/TitleImage.png" alt="TitleImage" class="title-image"  style="width: 250px;>
                 <div class="settings">
-                    <label class="slider-label" style="text-align:center;">出題モードを選択</label>
+                    <label class="slider-label" style="text-align:center;">出題方法を選択</label>
                     <div class="mode-selection">
-                        <button class="mode-btn ${state.mode === 'quiz' ? 'active' : ''}" onclick="changeMode('quiz')">4択モード</button>
+                        <button class="mode-btn ${state.mode === 'quiz' ? 'active' : ''}" onclick="changeMode('quiz')">4択問題</button>
                         <button class="mode-btn ${state.mode === 'flashcard' ? 'active' : ''}" onclick="changeMode('flashcard')">フラッシュカード</button>
                     </div>
 
@@ -831,7 +833,7 @@ function render() {
         const starLabel = starred ? '★' : '☆';
 
         if (state.mode === 'quiz') {
-            // ─── 4択モードの画面 ───
+            // ─── 4択問題の画面 ───
             const correctAnswerObj = q.choices.find(c => c.term === q.a);
             const wrongAnswersObj = q.choices.filter(c => c.term !== q.a);
             
@@ -850,13 +852,13 @@ function render() {
                 <div class="progress-container"><div class="progress-bar" style="width:${progress}%"></div></div>
                 <div class="question-text">${q.q}</div>
                 <div class="choices">
-                    ${q.choices.map(choice => {
+                    ${q.choices.map((choice, idx) => {
                         let cls = "";
                         if (state.selectedAnswer) {
                             if (choice.term === q.a) cls = "correct";
                             else if (choice.term === state.selectedAnswer) cls = "wrong";
                         }
-                        return `<button class="choice-btn ${cls}" onclick="checkAnswer('${escapeHtml(choice.term)}')" ${state.selectedAnswer ? 'disabled' : ''}>${choice.term}</button>`;
+                        return `<button class="choice-btn ${cls}" onclick="checkAnswer(state.quizList[state.currentIndex].choices[${idx}].term)" ${state.selectedAnswer ? 'disabled' : ''}>${escapeHtml(choice.term)}</button>`;
                     }).join('')}
                 </div>
                 <div class="feedback-area" style="display:${state.selectedAnswer ? 'block' : 'none'}">
@@ -890,7 +892,7 @@ function render() {
                 </div>
             `;
         } else {
-            // ─── フラッシュカードモードの画面 ───
+            // ─── フラッシュカードの画面 ───
             app.innerHTML = `
                 <div class="quiz-header-with-star">
                     <div class="quiz-header-left">
@@ -968,9 +970,9 @@ function render() {
                 <p>作成したJSONファイルから、ランダムに問題を出題する学習アプリです。</p>
                 
                 <ul style="padding-left:1.2rem; margin-top:0.8rem;">
-                <li>選択肢から解答する4択モードと、単語カードのようにめくって解答するフラッシュカードモードがあります。</li>
+                <li>選択肢から解答する4択問題と、単語カードのようにめくって解答するフラッシュカードがあります。</li>
                 <li>問題に⭐マークをつけることで、特に練習したい問題を繰り返し解くことができます。</li>
-                <li>4択モードで不正解になった問題、フラッシュカードモードで「わからなかった」を選んだ問題は自動的に🔥弱点として登録され、「弱点集中モード」で繰り返し復習できます。正解（「わかった」）するとその問題は弱点から自動的に外れます。</li>
+                <li>4択問題で不正解になった問題、フラッシュカードで「わからなかった」を選んだ問題は自動的に🔥弱点として登録され、「弱点集中モード」で繰り返し復習できます。正解（「わかった」）するとその問題は弱点から自動的に外れます。</li>
                 <li>日々の学習記録を保存することができます。</li>
                 <li>⭐マークと🔥弱点、学習記録のデータはLocalStorageに保存されます。
                 </ul>
@@ -983,7 +985,7 @@ function render() {
                 <pre style="background:#f8fafc; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; border:1px solid var(--border);">[
   {
     "id": "A12345",
-    "q": "土壌の酸性度によって花色が変わる、梅雨の時期に咲く花は？",
+    "q": "土壌の酸性度によって花色が変わる、梅雨の時期に咲く花。",
     "a": "紫陽花",
     "detail": "土が酸性（低pH）だと、土に含まれるアルミニウムが溶け出しやすくなり、紫陽花がこれを吸収します。吸収されたアルミニウムと色素が結合することで、鮮やかな青色に変化します。土がアルカリ性（高pH）だと、アルミニウムが溶け出さず根から吸収されません。そのため、色素本来のピンクや赤色が発色します。"
   }
