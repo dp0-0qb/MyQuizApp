@@ -866,6 +866,7 @@ function render() {
                         ${state.isCorrect ? '✅ 正解です！' : '❌ 不正解...'}
                     </div>
                     <div class="expl-section">
+                        ${q.hasFixedWrongs ? '' : `
                         <div class="expl-title">正解の解説:</div>
                         <div class="expl-box">
                             <a href="https://www.google.com/search?q=${encodeURIComponent(correctAnswerObj.term)}" target="_blank" rel="noopener noreferrer" class="expl-term">${correctAnswerObj.term}</a>: 
@@ -885,6 +886,7 @@ function render() {
                             </div>
                         `;
                         }).join('')}
+                        `}
                     </div>
                     <button class="next-btn" onclick="nextQuestion()">
                         ${state.currentIndex + 1 >= actualTotal ? '最終結果を見る' : '次の問題へ'}
@@ -1144,6 +1146,7 @@ function startQuiz() {
     state.quizList = shuffledPool.map(item => {
         // w1〜w3のうち値があるものだけ収集
         const fixedWrongs = [item.w1, item.w2, item.w3].filter(w => w);
+        const hasFixedWrongs = fixedWrongs.length > 0;
         const needed = 3 - fixedWrongs.length;
 
         // 不足分はランダムで補充（fixedWrongsと正解と重複しないように除外）
@@ -1153,12 +1156,12 @@ function startQuiz() {
             .slice(0, needed);
 
         const choices = [
-            { term: item.a, def: item.q, detail: item.detail || null, id: item.id || null },
-            ...fixedWrongs.map(w => ({ term: w, def: null, detail: null, id: null })),
-            ...randomWrongs.map(o => ({ term: o.a, def: o.q, detail: null, id: o.id || null }))
+            { term: item.a, def: item.q, detail: item.detail || null, id: item.id || null, hasFixed: hasFixedWrongs },
+            ...fixedWrongs.map(w => ({ term: w, def: null, detail: null, id: null, hasFixed: true })),
+            ...randomWrongs.map(o => ({ term: o.a, def: o.q, detail: null, id: o.id || null, hasFixed: false }))
         ].sort(() => Math.random() - 0.5);
 
-        return { id: item.id || null, q: item.q, a: item.a, detail: item.detail, choices: choices };
+        return { id: item.id || null, q: item.q, a: item.a, detail: item.detail, hasFixedWrongs: hasFixedWrongs, choices: choices };
     });
     render();
 }
