@@ -982,21 +982,27 @@ function render() {
                 <hr style="border:none; border-top:1px solid var(--border); margin:1.2rem 0;">
 
                 <p><strong>JSONの記述ルール</strong></p>
-                <p>id、q、a、detail が1問分のデータのかたまりです。<br>
+                <p>id、q、a、w1、w2、w3、detail が1問分のデータのかたまりです。<br>
                 ⭐スターと🔥弱点のデータはJSONファイルの名称ごとに管理されるため、ファイル名の変更には注意が必要です。</p>
                 <pre style="background:#f8fafc; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; border:1px solid var(--border);">[
   {
-    "id": "A12345",
-    "q": "土壌の酸性度によって花色が変わる、梅雨の時期に咲く花。",
-    "a": "紫陽花",
-    "detail": "土が酸性（低pH）だと、土に含まれるアルミニウムが溶け出しやすくなり、紫陽花がこれを吸収します。吸収されたアルミニウムと色素が結合することで、鮮やかな青色に変化します。土がアルカリ性（高pH）だと、アルミニウムが溶け出さず根から吸収されません。そのため、色素本来のピンクや赤色が発色します。"
+    "id": "",
+    "q": "",
+    "a": "",
+    "w1": "",
+    "w2": "",
+    "w3": "",
+    "detail": ""
   }
 ]</pre>
                 <ul style="padding-left:1.2rem; margin-top:0.8rem;">
                     <li><strong>id</strong>: 問題ID。決まった形はありませんが、一意の値である必要があります。</li>
-                    <li><strong>q</strong>: 問題文。誤答選択肢の場合、説明文としても表示されます。</li>
+                    <li><strong>q</strong>: 問題文。</li>
                     <li><strong>a</strong>: 解答。</li>
-                    <li><strong>detail</strong>: 解答後に表示される説明文。問題文よりも詳細な補足説明文を想定しています。空欄でもOK。</li>
+                    <li><strong>w1</strong>: 誤答選択肢1。空欄でもOK。空欄の場合は、他の問題の解答（a）が誤答選択肢となります。w2、w3も同様です。</li>
+                    <li><strong>w2</strong>: 誤答選択肢2。</li>
+                    <li><strong>w3</strong>: 誤答選択肢3。</li>
+                    <li><strong>detail</strong>: 解答後に表示される説明文。空欄でもOK。</li>
                 </ul>
             </div>
             <button class="start-btn" onclick="state.screen='menu'; render();">メニューに戻る</button>
