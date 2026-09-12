@@ -879,7 +879,7 @@ function render() {
                             return `
                             <div class="expl-box" style="display:flex; align-items:flex-start; justify-content:space-between; gap:8px;">
                                 <div>
-                                    <a href="https://www.google.com/search?q=${encodeURIComponent(choice.term)}" target="_blank" rel="noopener noreferrer" class="expl-term">${choice.term}</a>: ${choice.def}
+                                    <a href="https://www.google.com/search?q=${encodeURIComponent(choice.term)}" target="_blank" rel="noopener noreferrer" class="expl-term">${choice.term}</a>${choice.def ? `: ${choice.def}` : ''}
                                 </div>
                                 ${choice.id ? `<button class="star-btn" style="flex-shrink:0;" onclick="toggleStar('${escapeHtml(choice.id)}'); render();" title="${choiceStarred ? 'スターを外す' : 'スターをつける'}">${choiceStarLabel}</button>` : ''}
                             </div>
@@ -971,17 +971,17 @@ function render() {
                 
                 <ul style="padding-left:1.2rem; margin-top:0.8rem;">
                 <li>選択肢から解答する4択問題と、単語カードのようにめくって解答するフラッシュカードがあります。</li>
-                <li>問題に⭐マークをつけることで、特に練習したい問題を繰り返し解くことができます。</li>
+                <li>問題に⭐スターをつけることで、特に練習したい問題を繰り返し解くことができます。</li>
                 <li>4択問題で不正解になった問題、フラッシュカードで「わからなかった」を選んだ問題は自動的に🔥弱点として登録され、「弱点集中モード」で繰り返し復習できます。正解（「わかった」）するとその問題は弱点から自動的に外れます。</li>
                 <li>日々の学習記録を保存することができます。</li>
-                <li>⭐マークと🔥弱点、学習記録のデータはLocalStorageに保存されます。
+                <li>⭐スター、🔥弱点、学習記録のデータはLocalStorageに保存されます。
                 </ul>
 
                 <hr style="border:none; border-top:1px solid var(--border); margin:1.2rem 0;">
 
                 <p><strong>JSONの記述ルール</strong></p>
                 <p>id、q、a、detail が1問分のデータのかたまりです。<br>
-                ⭐マークと🔥弱点のデータはJSONファイルの名称ごとに管理されるため、ファイル名の変更には注意が必要です。</p>
+                ⭐スターと🔥弱点のデータはJSONファイルの名称ごとに管理されるため、ファイル名の変更には注意が必要です。</p>
                 <pre style="background:#f8fafc; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; border:1px solid var(--border);">[
   {
     "id": "A12345",
@@ -992,7 +992,7 @@ function render() {
 ]</pre>
                 <ul style="padding-left:1.2rem; margin-top:0.8rem;">
                     <li><strong>id</strong>: 問題ID。決まった形はありませんが、一意の値である必要があります。</li>
-                    <li><strong>q</strong>: 問題文。解答後に表示される説明文（誤答選択肢の場合）を兼ねます。</li>
+                    <li><strong>q</strong>: 問題文。誤答選択肢の場合、説明文としても表示されます。</li>
                     <li><strong>a</strong>: 解答。</li>
                     <li><strong>detail</strong>: 解答後に表示される説明文。問題文よりも詳細な補足説明文を想定しています。空欄でもOK。</li>
                 </ul>
@@ -1142,14 +1142,20 @@ function startQuiz() {
     const shuffledPool = [...pool].sort(() => Math.random() - 0.5);
 
     state.quizList = shuffledPool.map(item => {
-        const others = currentData
-            .filter(d => d.a !== item.a)
+        // w1〜w3のうち値があるものだけ収集
+        const fixedWrongs = [item.w1, item.w2, item.w3].filter(w => w);
+        const needed = 3 - fixedWrongs.length;
+
+        // 不足分はランダムで補充（fixedWrongsと正解と重複しないように除外）
+        const randomWrongs = currentData
+            .filter(d => d.a !== item.a && !fixedWrongs.includes(d.a))
             .sort(() => Math.random() - 0.5)
-            .slice(0, 3);
-        
+            .slice(0, needed);
+
         const choices = [
             { term: item.a, def: item.q, detail: item.detail || null, id: item.id || null },
-            ...others.map(o => ({ term: o.a, def: o.q, detail: null, id: o.id || null }))
+            ...fixedWrongs.map(w => ({ term: w, def: null, detail: null, id: null })),
+            ...randomWrongs.map(o => ({ term: o.a, def: o.q, detail: null, id: o.id || null }))
         ].sort(() => Math.random() - 0.5);
 
         return { id: item.id || null, q: item.q, a: item.a, detail: item.detail, choices: choices };
