@@ -866,13 +866,15 @@ function render() {
                         ${state.isCorrect ? '✅ 正解です！' : '❌ 不正解...'}
                     </div>
                     <div class="expl-section">
-                        ${q.hasFixedWrongs ? '' : `
+                        ${q.detail ? `
                         <div class="expl-title">正解の解説:</div>
                         <div class="expl-box">
                             <a href="https://www.google.com/search?q=${encodeURIComponent(correctAnswerObj.term)}" target="_blank" rel="noopener noreferrer" class="expl-term">${correctAnswerObj.term}</a>: 
                             <span class="detail-text">${correctAnswerObj.detail || correctAnswerObj.def}</span>
                         </div>
+                        ` : ''}
 
+                        ${!q.hasFixedWrongs ? `
                         <div class="other-options-title">その他の選択肢:</div>
                         ${wrongAnswersObj.map(choice => {
                             const choiceStarred = choice.id ? isStarred(choice.id) : false;
@@ -886,7 +888,7 @@ function render() {
                             </div>
                         `;
                         }).join('')}
-                        `}
+                        ` : ''}
                     </div>
                     <button class="next-btn" onclick="nextQuestion()">
                         ${state.currentIndex + 1 >= actualTotal ? '最終結果を見る' : '次の問題へ'}
@@ -966,7 +968,7 @@ function render() {
             <h1>使い方</h1>
             <div style="text-align:left; line-height:1.8; font-size:0.95rem;">
 
-            <img src="images/Sleep.png" alt="Sleep" class="title-image" style="width: 250px;">
+                <img src="images/Sleep.png" alt="Sleep" class="title-image" style="width: 250px;">
 
                 <p><strong>このアプリについて</strong></p>
                 <p>作成したJSONファイルから、ランダムに問題を出題する学習アプリです。</p>
@@ -974,7 +976,7 @@ function render() {
                 <ul style="padding-left:1.2rem; margin-top:0.8rem;">
                 <li>選択肢から解答する4択問題と、単語カードのようにめくって解答するフラッシュカードがあります。</li>
                 <li>問題に⭐スターをつけることで、特に練習したい問題を繰り返し解くことができます。</li>
-                <li>4択問題で不正解になった問題、フラッシュカードで「わからなかった」を選んだ問題は自動的に🔥弱点として登録され、「弱点集中モード」で繰り返し復習できます。正解（「わかった」）するとその問題は弱点から自動的に外れます。</li>
+                <li>4択問題で不正解になった問題、フラッシュカードで「わからなかった」を選んだ問題は自動的に🔥弱点として登録され、「弱点集中モード」で繰り返し復習できます。正解（または「わかった」を選択）するとその問題は弱点から自動的に外れます。</li>
                 <li>日々の学習記録を保存することができます。</li>
                 <li>⭐スター、🔥弱点、学習記録のデータはLocalStorageに保存されます。
                 </ul>
@@ -984,17 +986,19 @@ function render() {
                 <p><strong>JSONの記述ルール</strong></p>
                 <p>id、q、a、w1、w2、w3、detail が1問分のデータのかたまりです。<br>
                 ⭐スターと🔥弱点のデータはJSONファイルの名称ごとに管理されるため、ファイル名の変更には注意が必要です。</p>
-                <pre style="background:#f8fafc; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; border:1px solid var(--border);">[
-  {
-    "id": "",
-    "q": "",
-    "a": "",
-    "w1": "",
-    "w2": "",
-    "w3": "",
-    "detail": ""
-  }
-]</pre>
+                <pre style="background:#f8fafc; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; border:1px solid var(--border);">
+[
+    {
+        "id": "",
+        "q": "",
+        "a": "",
+        "w1": "",
+        "w2": "",
+        "w3": "",
+        "detail": ""
+    }
+]
+                </pre>
                 <ul style="padding-left:1.2rem; margin-top:0.8rem;">
                     <li><strong>id</strong>: 問題ID。決まった形はありませんが、一意の値である必要があります。</li>
                     <li><strong>q</strong>: 問題文。</li>
@@ -1162,9 +1166,9 @@ function startQuiz() {
             .slice(0, needed);
 
         const choices = [
-            { term: item.a, def: item.q, detail: item.detail || null, id: item.id || null, hasFixed: hasFixedWrongs },
-            ...fixedWrongs.map(w => ({ term: w, def: null, detail: null, id: null, hasFixed: true })),
-            ...randomWrongs.map(o => ({ term: o.a, def: o.q, detail: null, id: o.id || null, hasFixed: false }))
+            { term: item.a, def: item.q, detail: item.detail || null, id: item.id || null },
+            ...fixedWrongs.map(w => ({ term: w, def: null, detail: null, id: null })),
+            ...randomWrongs.map(o => ({ term: o.a, def: o.q, detail: null, id: o.id || null }))
         ].sort(() => Math.random() - 0.5);
 
         return { id: item.id || null, q: item.q, a: item.a, detail: item.detail, hasFixedWrongs: hasFixedWrongs, choices: choices };
