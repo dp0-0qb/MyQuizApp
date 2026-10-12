@@ -376,6 +376,20 @@
         }
         .star-list-back-btn:hover { color: var(--text-main); }
 
+    /* ─── Markdown表示（使い方・免責事項） ─── */
+        .md-content { text-align: left; line-height: 1.8; font-size: 0.95rem; }
+        .md-content p:has(> img:only-child) { margin: 0; }
+        .md-content img { display: block; max-width: 100%; width: 250px; height: auto; margin: 0 auto 2rem; }
+        .md-content ul { padding-left: 1.2rem; margin-top: 0.8rem; }
+        .md-content hr { border: none; border-top: 1px solid var(--border); margin: 1.2rem 0; }
+        .md-content pre {
+            background: #f8fafc; padding: 1rem; border-radius: 8px;
+            font-size: 0.8rem; overflow-x: auto; border: 1px solid var(--border);
+        }
+        .md-content pre code { font-size: inherit; }
+        .md-disclaimer { margin-bottom: 1.5rem; }
+        .md-disclaimer ul { display: flex; flex-direction: column; gap: 12px; margin-top: 1em; }
+
     </style>
 </head>
 <body>
@@ -386,6 +400,7 @@
 <!-- 弱点管理モーダル（app外に配置） -->
 <div id="weak-modal" style="display:none;"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script>
 // 音声のプリロード（Web Audio APIでデコード済みバッファを保持し、再生ラグを解消）
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -756,6 +771,28 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+// ─── Markdownファイルの読み込み ───────────────────────────────
+const mdCache = {};
+
+async function loadMarkdownInto(path, targetId) {
+    try {
+        if (!(path in mdCache)) {
+            const res = await fetch(path);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            mdCache[path] = await res.text();
+        }
+        const el = document.getElementById(targetId);
+        if (!el) return; // 読み込み中に画面が切り替わった場合は何もしない
+        el.innerHTML = marked.parse(mdCache[path], { breaks: true });
+    } catch (e) {
+        const el = document.getElementById(targetId);
+        if (el) {
+            el.innerHTML = `<p style="color:var(--wrong);">${escapeHtml(path)} を読み込めませんでした。</p>`;
+        }
+        console.log('Markdown load failed:', path, e);
+    }
+}
+
 // ─── アプリ状態 ──────────────────────────────────────────────
 
 let state = {
@@ -989,71 +1026,24 @@ function render() {
         `;
 
     } else if (state.screen === 'help') {
-    app.innerHTML = `
-        <div class="menu-screen">
-            <h1>使い方</h1>
-            <div style="text-align:left; line-height:1.8; font-size:0.95rem;">
-
-                <img src="images/Sleep.png" alt="Sleep" class="title-image" style="width: 250px;">
-
-                <p><strong>このアプリについて</strong></p>
-                <p>作成したJSONファイルから、ランダムに問題を出題する学習アプリです。</p>
-                
-                <ul style="padding-left:1.2rem; margin-top:0.8rem;">
-                <li>選択肢から解答する4択問題と、単語カードのようにめくって解答するフラッシュカードがあります。</li>
-                <li>問題に⭐スターをつけることで、特に練習したい問題を繰り返し解くことができます。</li>
-                <li>4択問題で不正解になった問題、フラッシュカードで「わからなかった」を選んだ問題は自動的に🔥弱点として登録され、「弱点集中モード」で繰り返し復習できます。正解（または「わかった」を選択）するとその問題は弱点から自動的に外れます。</li>
-                <li>日々の学習記録を保存することができます。</li>
-                <li>⭐スター、🔥弱点、学習記録のデータはLocalStorageに保存されます。
-                </ul>
-
-                <hr style="border:none; border-top:1px solid var(--border); margin:1.2rem 0;">
-
-                <p><strong>JSONの記述ルール</strong></p>
-                <p>id、q、a、w1、w2、w3、detail が1問分のデータのかたまりです。<br>
-                ⭐スターと🔥弱点のデータはJSONファイルの名称ごとに管理されるため、ファイル名の変更には注意が必要です。</p>
-                <pre style="background:#f8fafc; padding:1rem; border-radius:8px; font-size:0.8rem; overflow-x:auto; border:1px solid var(--border);">
-[
-    {
-        "id": "",
-        "q": "",
-        "a": "",
-        "w1": "",
-        "w2": "",
-        "w3": "",
-        "detail": ""
-    }
-]
-                </pre>
-                <ul style="padding-left:1.2rem; margin-top:0.8rem;">
-                    <li><strong>id</strong>: 問題ID。決まった形はありませんが、一意の値である必要があります。</li>
-                    <li><strong>q</strong>: 問題文。</li>
-                    <li><strong>a</strong>: 解答。</li>
-                    <li><strong>w1</strong>: 誤答選択肢1。空欄でもOK。空欄の場合は、他の問題の解答（a）が誤答選択肢となります。w2、w3も同様です。</li>
-                    <li><strong>w2</strong>: 誤答選択肢2。</li>
-                    <li><strong>w3</strong>: 誤答選択肢3。</li>
-                    <li><strong>detail</strong>: 解答後に表示される説明文。空欄でもOK。</li>
-                </ul>
+        app.innerHTML = `
+            <div class="menu-screen">
+                <h1>使い方</h1>
+                <div id="md-body" class="md-content">読み込み中...</div>
+                <button class="start-btn" onclick="state.screen='menu'; render();">メニューに戻る</button>
             </div>
-            <button class="start-btn" onclick="state.screen='menu'; render();">メニューに戻る</button>
-        </div>
-    `;
+        `;
+        loadMarkdownInto('help.md', 'md-body');
 
     } else if (state.screen === 'disclaimer') {
         app.innerHTML = `
             <div class="menu-screen">
                 <h1>免責事項</h1>
-                <div style="text-align:left; line-height:1.8; font-size:0.95rem; margin-bottom: 1.5rem;">
-                    <ul style="padding-left:1.2rem; display: flex; flex-direction: column; gap: 12px;">
-                        <li>本アプリは作者本人が個人的に利用するために作成・公開しているものであり、第三者による利用は想定していません。</li>
-                        <li>本アプリはバイブコーディングを活用して開発しており、コードの品質・安全性について十分なレビューやテストを行っていない箇所が含まれます。</li>
-                        <li>本アプリの利用によって生じたいかなる損害（データの損失、誤動作等を含む）についても、作者は一切の責任を負いません。</li>
-                        <li>本アプリは現状有姿で提供され、動作の正確性・完全性についていかなる保証も行いません。</li>
-                    </ul>
-                </div>
+                <div id="md-body" class="md-content md-disclaimer">読み込み中...</div>
                 <button class="start-btn" onclick="state.screen='menu'; render();">メニューに戻る</button>
             </div>
         `;
+        loadMarkdownInto('disclaimer.md', 'md-body');
 
     } else if (state.screen === 'history') {
         const history = JSON.parse(localStorage.getItem('quiz_history') || '[]');
