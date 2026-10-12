@@ -331,6 +331,31 @@
             color: var(--accent);
         }
 
+    /* ─── 免責ボタン ─── */
+        .disclaimer-btn {
+            position: absolute;
+            top: 1.2rem;
+            right: 3.8rem;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: #fff;
+            color: var(--text-sub);
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .disclaimer-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
     /* ─── スター一覧 ─── */
         .star-list-item {
             padding: 12px 0;
@@ -765,8 +790,9 @@ function render() {
 
         app.innerHTML = `
             <div class="menu-screen">
+                <button class="disclaimer-btn" onclick="state.screen='disclaimer'; render();" title="免責事項">！</button>
                 <button class="help-btn" onclick="state.screen='help'; render();" title="使い方">？</button>
-                <img src="images/TitleImage.png" alt="TitleImage" class="title-image"  style="width: 250px;>
+                <img src="images/TitleImage.png" alt="TitleImage" class="title-image"  style="width: 250px;">
                 <div class="settings">
                     <label class="slider-label" style="text-align:center;">出題方法を選択</label>
                     <div class="mode-selection">
@@ -1012,6 +1038,22 @@ function render() {
             <button class="start-btn" onclick="state.screen='menu'; render();">メニューに戻る</button>
         </div>
     `;
+
+    } else if (state.screen === 'disclaimer') {
+        app.innerHTML = `
+            <div class="menu-screen">
+                <h1>免責事項</h1>
+                <div style="text-align:left; line-height:1.8; font-size:0.95rem; margin-bottom: 1.5rem;">
+                    <ul style="padding-left:1.2rem; display: flex; flex-direction: column; gap: 12px;">
+                        <li>本アプリは作者本人が個人的に利用するために作成・公開しているものであり、第三者による利用は想定していません。</li>
+                        <li>本アプリはバイブコーディングを活用して開発しており、コードの品質・安全性について十分なレビューやテストを行っていない箇所が含まれます。</li>
+                        <li>本アプリの利用によって生じたいかなる損害（データの損失、誤動作等を含む）についても、作者は一切の責任を負いません。</li>
+                        <li>本アプリは現状有姿で提供され、動作の正確性・完全性についていかなる保証も行いません。</li>
+                    </ul>
+                </div>
+                <button class="start-btn" onclick="state.screen='menu'; render();">メニューに戻る</button>
+            </div>
+        `;
 
     } else if (state.screen === 'history') {
         const history = JSON.parse(localStorage.getItem('quiz_history') || '[]');
